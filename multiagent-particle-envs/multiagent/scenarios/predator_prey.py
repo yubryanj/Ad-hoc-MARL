@@ -25,6 +25,11 @@ class Scenario(BaseScenario):
         return world
 
     def reset_world(self, world):
+
+        """
+        TODO: Select a random initialization of 1,2,3,5
+        TODO: Test on 4
+        """
         # random properties for agents
         for i, agent in enumerate(world.agents):
             if agent.prey:
@@ -38,20 +43,46 @@ class Scenario(BaseScenario):
             agent.state.p_vel = np.zeros(world.dim_p)
             agent.state.c = np.zeros(world.dim_c)
 
-    def reward(self, agent, world):
-        return -1
+    def reward(self, agent, world, \
+                distance_threshold=0.1,\
+                minimum_number_of_predators=2):
+        """
+        TODO: Write me!
+        """
+
+        # Position of the prey
+        prey_position = world.scripted_agents[0].state.p_pos
+
+        # Distance of the agnet from the prey
+        agent_distance = np.sum(np.square(agent.state.p_pos - prey_position))
+
+        # distance of other predators from the prey
+        predator_distances = [np.sum(np.square(predator.state.p_pos - prey_position)) for predator in world.policy_agents if predator.name is not agent.name]
+
+        predators_in_range = [True for predator_distance in predator_distances if predator_distance < distance_threshold]
+
+        # If the agent is in range and enough other predators are in range of the prey
+        if agent_distance < distance_threshold and np.sum(predators_in_range) >= minimum_number_of_predators - 1:
+            return 0
+        else:
+            return -(np.sum(predator_distances) + agent_distance)
+
+
 
     def observation(self, agent, world):
+        """
+        TODO: Write me!
+        """
         # get positions of all entities in this agent's reference frame
-        entity_pos = []
-        for entity in world.landmarks:
-            entity_pos.append(entity.state.p_pos - agent.state.p_pos)
-        return np.concatenate([agent.state.p_vel] + entity_pos)
+        agent_pos = []
+        for agent in world.agents:
+            agent_pos.append(agent.state.p_pos)
+        return np.concatenate([agent.state.p_vel] + agent_pos)
 
 
     def scripted_agent_action(self, agent, world):
         # The scripted agent takes a random direction in every move
-        
+
         scripted_agent_action = Action()
         action =  [[0, np.random.rand() * 2 - 1, 0, np.random.rand() * 2 - 1, 0]]
         
