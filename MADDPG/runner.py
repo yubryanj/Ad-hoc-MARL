@@ -47,10 +47,6 @@ class Runner:
                     u.append(action)
                     actions.append(action)
             
-            # Gives a random action to each non-controlled agent
-            for i in range(self.args.n_agents, self.args.n_players):
-                actions.append([0, np.random.rand() * 2 - 1, 0, np.random.rand() * 2 - 1, 0])
-            
             # Take the next action; retrieve next tate, reward, done, and additional information
             s_next, r, done, info = self.env.step(actions)
 
@@ -111,11 +107,10 @@ class Runner:
                         # Select the action for the given agent
                         action = agent.select_action(s[agent_id], 0, 0)
                         actions.append(action)
-                # TODO: What is happening here? Is this just filling in code?
-                for i in range(self.args.n_agents, self.args.n_players):
-                    actions.append([0, np.random.rand() * 2 - 1, 0, np.random.rand() * 2 - 1, 0])
+
                 # Take the next action
                 s_next, r, done, info = self.env.step(actions)
+
                 # Update the rewards
                 rewards += r[0]
                 # Update the state
