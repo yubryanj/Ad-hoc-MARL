@@ -52,9 +52,9 @@ def generate(args):
 
 if __name__=="__main__":
 
-    args ={ 'n_rows': 2,
-            'n_cols': 2,
-            'n_agents': 1,
+    args ={ 'n_rows': 3,
+            'n_cols': 3,
+            'n_agents': 2,
             'n_samples': 1e3,
     }
 

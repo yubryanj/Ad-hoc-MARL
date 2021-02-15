@@ -9,8 +9,7 @@
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
-            // "program": "${file}", # Opens current file
-            "program": "/Volumes/GoogleDrive/My Drive/Education/Eidgenössische Technische Hochschule Zürich/DISCO Independent Project/MADDPG/main.py",
+            "program": "${file}",
             "console": "integratedTerminal"
         }
     ]

@@ -44,7 +44,7 @@ def main():
 
         # Prepare into a torch dataset
         dataset = TensorDataset(features,targets) 
-        dataloader = DataLoader(dataset, batch_size=32) 
+        dataloader = DataLoader(dataset, batch_size=128) 
 
         model_args ={
                 'num_embeddings': args['number_of_words'] + 1, 
@@ -68,12 +68,10 @@ def main():
                                 Adam(model.parameters(), betas=(0.9, 0.98), eps=1e-09),
                                 model_args['d_model'], model_args['n_warmup_steps'])
 
-        # optimizer = torch.optim.Adam(model.parameters())
-
         best_loss = 1e9
 
         # Iterate through the data
-        for i in tqdm(range(1000)):
+        for i in tqdm(range(200)):
 
                 total_loss = 0
 
@@ -115,7 +113,7 @@ def main():
                         total_loss += loss.item()
                         
 
-                if i% 100 == 0 :
+                if i% 50 == 0 :
                         print(total_loss)
                         if total_loss < best_loss:
                                 print("Saving model!")

@@ -29,6 +29,8 @@ class Runner:
 
     def run(self):
         returns = []
+
+        dataset = []
         # Run this loop repeatedly
         for time_step in tqdm(range(self.args.time_steps)):
             # reset the environment
@@ -50,29 +52,33 @@ class Runner:
             # Take the next action; retrieve next tate, reward, done, and additional information
             s_next, r, done, info = self.env.step(actions)
 
+
+            # Store the feature vector
+            dataset.append([s[:self.args.n_agents], u, s_next[:self.args.n_agents]])
+
             # Store the episode in the replay buffer
-            self.buffer.store_episode(s[:self.args.n_agents], u, r[:self.args.n_agents], s_next[:self.args.n_agents])
+            self.buffer.store_episode(s[:self.args.n_agents], u, r, s_next[:self.args.n_agents])
 
             # Update the state
             s = s_next
 
-            # If the buffer size is sufficiently large, sample from the buffer and train the agent
-            if self.buffer.current_size >= self.args.batch_size:
+            # # If the buffer size is sufficiently large, sample from the buffer and train the agent
+            # if self.buffer.current_size >= self.args.batch_size:
 
-                # Get a sample from the buffer of (s,a,r,s')
-                transitions = self.buffer.sample(self.args.batch_size)
+            #     # Get a sample from the buffer of (s,a,r,s')
+            #     transitions = self.buffer.sample(self.args.batch_size)
 
-                # Train each agent based on the behavior of other agents
-                for agent in self.agents:
+            #     # Train each agent based on the behavior of other agents
+            #     for agent in self.agents:
 
-                    # Get a list of the agents
-                    other_agents = self.agents.copy()
+            #         # Get a list of the agents
+            #         other_agents = self.agents.copy()
                     
-                    # remove the current agent
-                    other_agents.remove(agent)
+            #         # remove the current agent
+            #         other_agents.remove(agent)
 
-                    # Train the current agent on the world transitions and the behavior of the other agents
-                    agent.learn(transitions, other_agents)
+            #         # Train the current agent on the world transitions and the behavior of the other agents
+            #         agent.learn(transitions, other_agents)
 
             # Show results
             if time_step > 0 and time_step % self.args.evaluate_rate == 0:
@@ -87,8 +93,11 @@ class Runner:
             self.noise = max(0.05, self.noise - 0.0000005)
             self.epsilon = max(0.05, self.noise - 0.0000005)
 
-            # Save the weights
-            np.save(self.save_path + '/returns.pkl', returns)
+        # Save the weights
+        np.save(self.save_path + '/returns.pkl', returns)
+
+        # save the state, action, next state triples
+        np.save(self.save_path + '/dataset.pkl', dataset)
 
     def evaluate(self):
         returns = []
@@ -117,5 +126,5 @@ class Runner:
                 s = s_next
             # Store the cumulative rewards
             returns.append(rewards)
-            print('Returns is', rewards)
+            # print('Returns is', rewards)
         return sum(returns) / self.args.evaluate_episodes

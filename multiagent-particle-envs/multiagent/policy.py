@@ -50,3 +50,25 @@ class InteractivePolicy(Policy):
         if k==key.RIGHT: self.move[1] = False
         if k==key.UP:    self.move[2] = False
         if k==key.DOWN:  self.move[3] = False
+
+
+class RandomPolicy(Policy):
+    def __init__(self, env, agent_index):
+        super(RandomPolicy, self).__init__()
+        self.env = env
+        self.action_size = self.env.action_space[agent_index].n
+
+    def action(self, obs):
+        # ignore observation and just act based on keyboard events
+
+        # Take a random action
+        move = np.random.randint(0,self.action_size)
+
+        u = np.zeros(5) # 5-d because of no-move action
+        if move == 0 : u[1] += 1.0
+        if move == 1 : u[2] += 1.0
+        if move == 2 : u[3] += 1.0
+        if move == 3 : u[4] += 1.0
+        if move == 4 : u[0] += 1.0
+
+        return u

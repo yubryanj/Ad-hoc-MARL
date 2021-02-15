@@ -10,8 +10,12 @@ import torch
 def main():
     model = torch.load('model/transformer.pth')
     args = np.load('./data/args.npy', allow_pickle=True).item()
+    features = np.load('./data/features.npy')
+    targets = np.load('./data/target.npy')[0]
 
-    current_state = ['s00','left','<PAD>','<PAD>']
+
+    current_state = features[0]
+    current_target = targets[0]
 
     # Tokenize input
     # current_state = input('Please the current state: ')
