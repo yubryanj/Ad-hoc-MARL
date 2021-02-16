@@ -21,6 +21,25 @@ class Feedforward(nn.Module):
         return x
 
 
+class Transition_Model(nn.Module):
+
+    def __init__(self, args):
+        super(Transition_Model, self).__init__()
+
+        # Dimensino to the transformer should be (batchsize, number of features, embedding dimension)
+        # Then, need to modify this dataset!
+        
+        self.embedding = nn.Linear(args.input_dimension, args.hidden_dimension)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=args.hidden_dimension, nhead=1)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
+        self.output = nn.Linear(args.hidden_dimension, args.output_dimension)
+
+    def forward(self, x):
+        x = self.embedding(x)
+        x = self.transformer_encoder(x)
+        x = self.output(x)
+        return x
+
 
 class Transformer(nn.Module):
 

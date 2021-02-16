@@ -3,7 +3,7 @@ import torch
 import numpy as np
 from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
-from transformer.model import Transformer, Feedforward
+from transformer.model import Transition_Model
 from torch.optim import Adam
 import os
 
@@ -26,7 +26,7 @@ def main():
 
         parser = argparse.ArgumentParser(description=None)
         parser.add_argument('-s', '--scenario', default='data_generate.py', help='Path of the scenario Python script.')
-        parser.add_argument('-m ', '--model', default='./model/feedforward.pth', help='Path of the model.')
+        parser.add_argument('-m ', '--model', default='./model/model.pth', help='Path of the model.')
         args = parser.parse_args()
 
         # Load the data
@@ -50,7 +50,7 @@ def main():
                 print(f'Loading model.')
                 model = torch.load(args.model)
         else:
-                model = Feedforward(args)
+                model = Transition_Model(args)
 
         model.train()
         criterion = torch.nn.MSELoss()
@@ -59,7 +59,7 @@ def main():
         best_loss = 1e9
 
         # Iterate through the data
-        for i in tqdm(range(20000)):
+        for i in tqdm(range(200)):
 
                 total_loss = 0
 
@@ -69,10 +69,10 @@ def main():
                         optimizer.zero_grad()
 
                         # Conduct a forward pass of the transformer
-                        predictions = model.forward(batch_features.float())
+                        predictions = model.forward(batch_features.unsqueeze(1).float())
 
                         # Compare the output of the model to the target
-                        loss = criterion(predictions, batch_labels)
+                        loss = criterion(predictions, batch_labels.unsqueeze(1))
 
                         # Update the model
                         loss.backward()
@@ -80,12 +80,13 @@ def main():
 
                         total_loss += loss.item()
                         
+                print(f'iteration {i}s total loss: {total_loss}')
 
                 if i% 50 == 0 :
                         print(f'iteration {i}s total loss: {total_loss}')
                         if total_loss < best_loss:
                                 print("Saving model!")
-                                torch.save(model, 'model/feedforward.pth')
+                                torch.save(model, args.model)
                                 best_loss = total_loss
                                 
 
