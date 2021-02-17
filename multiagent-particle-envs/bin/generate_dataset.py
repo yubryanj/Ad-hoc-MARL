@@ -38,10 +38,15 @@ if __name__ == '__main__':
         act_n = []
         for i, policy in enumerate(policies):
             act_n.append(policy.action(obs_old[i]))
+        
         # step environment
         obs_new, reward_new, done_new, _ = env.step(act_n)
 
+        # Save the data
         dataset.append([obs_old, act_n, obs_new])
 
-    np.save('./dataset_01', dataset)
+        # Set the old observation to the new observation
+        obs_old = obs_new
+
+    np.save('./dataset', dataset)
 

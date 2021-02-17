@@ -3,7 +3,7 @@ import torch
 import numpy as np
 from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
-from transformer.model import Transition_Model
+from model import Transition_Model
 from torch.optim import Adam
 import os
 
