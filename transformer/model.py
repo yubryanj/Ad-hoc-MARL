@@ -3,6 +3,25 @@ import torch
 from torch import nn
 
 
+class Learn_Embeddings(nn.Module):
+    def __init__(self, args):
+        super(Learn_Embeddings, self).__init__()
+
+        self.state_embedding = nn.Embedding(args.number_of_states, args.embedding_dimension)
+        self.action_embedding = nn.Embedding(args.number_of_actions, args.embedding_dimension)
+        self.linear = nn.Linear(args.embedding_dimension * 2,args.output_size)
+
+    def forward(self, state, action):
+        embedded_state = self.state_embedding(state)
+        embedded_action = self.action_embedding(action)
+
+        features_vector = torch.cat((embedded_state,embedded_action), axis=1)
+
+        predictions = self.linear(features_vector)
+        
+        return predictions
+
+
 class Feedforward(nn.Module):
 
     def __init__(self, args):
