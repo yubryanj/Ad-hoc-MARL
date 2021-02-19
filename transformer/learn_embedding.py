@@ -10,13 +10,14 @@ import os
 
 class Dataset(torch.utils.data.Dataset):
   'Characterizes a dataset for PyTorch'
-  def __init__(self, states, actions, targets, state_to_id, action_to_id):
+  def __init__(self, states, actions, targets, state_to_id, action_to_id, args):
         'Initialization'
         self.states = states
         self.actions= actions
         self.targets = targets
         self.state_to_id = state_to_id
         self.action_to_id = action_to_id
+        self.args = args
 
   def __len__(self):
         'Denotes the total number of samples'
@@ -25,9 +26,16 @@ class Dataset(torch.utils.data.Dataset):
   def __getitem__(self, index):
         'Generates one sample of data'
         # Select sample
-        state = self.state_to_id[tuple(self.states[index])]
-        action = self.action_to_id[tuple(self.actions[index])]
-        target = self.state_to_id[tuple(self.targets[index])]
+
+        if self.args.mode == 'linear':
+                state = self.states[index]
+                action = self.action_to_id[tuple(self.actions[index])]
+                target = self.targets[index]
+
+        elif self.args.mode == 'embedding':
+                state = self.state_to_id[tuple(self.states[index])]
+                action = self.action_to_id[tuple(self.actions[index])]
+                target = self.state_to_id[tuple(self.targets[index])]
 
         return state, action, target
 
@@ -38,13 +46,13 @@ def main():
         # Can truncate the states to smaller decimals, so there is increased overlaps (i.e. 1.53 and 1.59 both maps to 1.5)
 
         parser = argparse.ArgumentParser(description=None)
-        parser.add_argument('-m ', '--model', default='./model/model.pth', help='Path of the model.')
+        parser.add_argument('-m ', '--model', default='./models/model.pth', help='Path of the model.')
         parser.add_argument('-w ', '--write_file', default='./log/log.txt', help='Path of the log file.')
         args = parser.parse_args()
 
         # Open log file
         f = open("./log/log.txt", "w")
-        f.write("Starting training.")
+        f.write("Starting training.\n")
         f.close()
 
         # Load the data
@@ -60,24 +68,33 @@ def main():
         # Model parameters
         args.number_of_states = len(state_to_id)
         args.number_of_actions = len(action_to_id)
-        args.output_size = args.number_of_states
         args.embedding_dimension = 512
+        args.state_input_size = state_features[0].shape[0]
+        args.action_input_size = action_features[0].shape[0]
+        args.output_size = targets[0].shape[0]
+        args.mode = "linear"
 
         # Prepare into a torch dataset
-        dataset = Dataset(state_features, action_features,targets, state_to_id, action_to_id) 
+        dataset = Dataset(state_features, action_features,targets, state_to_id, action_to_id, args) 
         dataloader = DataLoader(dataset, batch_size=256, shuffle=True) 
 
         model = Learn_Embeddings(args)
         model.train()
 
         # Cross entropy loss if assuming we're mapping to states
-        criterion = torch.nn.CrossEntropyLoss(ignore_index=0)
+        # criterion = torch.nn.CrossEntropyLoss(ignore_index=0)
+        
+        # MSE if we're doing a regression to the next state
+        criterion = torch.nn.MSELoss()
+
+
         optimizer = Adam(model.parameters())
 
         best_loss = 1e9
+        losses = []
 
         # Iterate through the data
-        for i in tqdm(range(1)):
+        for i in tqdm(range(200)):
 
                 total_loss = 0
 
@@ -87,27 +104,30 @@ def main():
                         optimizer.zero_grad()
 
                         # Conduct a forward pass of the transformer
-                        predictions = model.forward(states.long(), actions.long())
+                        predictions = model.forward(states, actions)
 
                         # Compare the output of the model to the target
-                        loss = criterion(predictions, target)
+                        loss = criterion(predictions.float(), target.float())
 
                         # Update the model
                         loss.backward()
                         optimizer.step()
 
                         total_loss += loss.item()
-                
+        
 
-                if i% 50 == 0 :
-                        f = open("./log/log.txt", "a")
-                        f.write(f'iteration {i}s total loss: {total_loss}')
-                        f.close()
-                        if total_loss < best_loss:
-                                print("Saving model!")
-                                torch.save(model, args.model)
-                                best_loss = total_loss
+                # if i% 50 == 0 :
+                f = open("./log/log.txt", "a")
+                f.write(f'iteration {i}s total loss: {total_loss}\n')
+                f.close()
+                if total_loss < best_loss:
+                        print("Saving model!")
+                        torch.save(model, args.model)
+                        best_loss = total_loss
 
+                losses.append(total_loss)
+
+        np.save('./log/losses', losses)
 
 if __name__ == "__main__":
     main()
