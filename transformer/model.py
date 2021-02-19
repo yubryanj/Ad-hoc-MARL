@@ -4,6 +4,53 @@ import torch
 from torch import nn
 
 
+class Learn_Embeddings_with_attention(nn.Module):
+    def __init__(self, args):
+        super(Learn_Embeddings_with_attention, self).__init__()
+
+        # Embed the state using a linear layer; the continuous space makes learning embeddings for every space
+        # Too expensive.  The alternative is to learn the most common embeddings and let the "Unknown" state be the
+        # equivalent of the linear layer
+
+        if args.mode == "linear":
+            self.state_embedding = nn.Linear(args.state_input_size, args.embedding_dimension)
+            # self.action_embedding = nn.Linear(args.action_input_size, args.embedding_dimension)
+        
+        elif args.mode == "embedding":
+            self.state_embedding = nn.Embedding(args.number_of_states, args.embedding_dimension)
+
+        # There are only five actions in the discrete space.  Thus, we can strictly use an embedding.
+        self.action_embedding = nn.Embedding(args.number_of_actions, args.embedding_dimension)
+
+        # Defining the attention layers
+        encoder_layer = nn.TransformerEncoderLayer(d_model=args.embedding_dimension, nhead=1)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
+
+        # Layer to create prediction of output
+        self.output = nn.Linear(args.embedding_dimension,args.output_size)
+
+
+
+    def forward(self, state, action):
+        # Embed the state and action
+        embedded_state = self.state_embedding(state.float())
+        embedded_action = self.action_embedding(action.long())
+
+        # Generate a tensor of shape (batch, items, dimensions)
+        embedded_state = embedded_state.unsqueeze(1)
+        embedded_action = embedded_action.unsqueeze(1)
+        input = torch.cat((embedded_state,embedded_action), axis=1)
+
+        # Feed the tensor into the transformer to learn encodings
+        transformer_output = self.transformer_encoder(input)
+
+        # Generate prediction of next state
+        # As per the bert classification model, "pooling" is done by selecting the first hidden state
+        predictions = self.output(transformer_output[:,0,:])
+        
+        return predictions
+
+
 class Learn_Embeddings(nn.Module):
     def __init__(self, args):
         super(Learn_Embeddings, self).__init__()

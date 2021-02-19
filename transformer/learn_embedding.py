@@ -3,7 +3,7 @@ import torch
 import numpy as np
 from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
-from model import Learn_Embeddings
+from model import Learn_Embeddings, Learn_Embeddings_with_attention
 from torch.optim import Adam
 import os
 
@@ -78,7 +78,7 @@ def main():
         dataset = Dataset(state_features, action_features,targets, state_to_id, action_to_id, args) 
         dataloader = DataLoader(dataset, batch_size=256, shuffle=True) 
 
-        model = Learn_Embeddings(args)
+        model = Learn_Embeddings_with_attention(args)
         model.train()
 
         # Cross entropy loss if assuming we're mapping to states
@@ -94,7 +94,7 @@ def main():
         losses = []
 
         # Iterate through the data
-        for i in tqdm(range(200)):
+        for i in tqdm(range(1)):
 
                 total_loss = 0
 
