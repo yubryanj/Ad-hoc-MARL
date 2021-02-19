@@ -41,17 +41,20 @@ class Dataset(torch.utils.data.Dataset):
 
 def main():
 
+        # Transfer Learning
+        # Take the weights learned from the trained linear classifier and load it into the the deeper model
+
         # Assumes the "UNK" will learn a mapping which will aid predictions of unseen states
         # Can update the model to only create embeddings for frequently occuring states
         # Can truncate the states to smaller decimals, so there is increased overlaps (i.e. 1.53 and 1.59 both maps to 1.5)
 
         parser = argparse.ArgumentParser(description=None)
         parser.add_argument('-m ', '--model', default='./models/model.pth', help='Path of the model.')
-        parser.add_argument('-w ', '--write_file', default='./log/log.txt', help='Path of the log file.')
+        parser.add_argument('-w ', '--log_file', default='./log/log.txt', help='Path of the log file.')
         args = parser.parse_args()
 
         # Open log file
-        f = open("./log/log.txt", "w")
+        f = open(args.log_file, "w")
         f.write("Starting training.\n")
         f.close()
 
@@ -117,7 +120,7 @@ def main():
         
 
                 # if i% 50 == 0 :
-                f = open("./log/log.txt", "a")
+                f = open(args.log_file, "a")
                 f.write(f'iteration {i}s total loss: {total_loss}\n')
                 f.close()
                 if total_loss < best_loss:
