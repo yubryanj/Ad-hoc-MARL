@@ -50,7 +50,9 @@ def main():
 
         parser = argparse.ArgumentParser(description=None)
         parser.add_argument('-m ', '--model', default='./models/model.pth', help='Path of the model.')
-        parser.add_argument('-w ', '--log_file', default='./log/log.txt', help='Path of the log file.')
+        parser.add_argument('-l ', '--log_file', default='./log/log.txt', help='Path of the log file.')
+        parser.add_argument('-ll ', '--loss_file', default='./log/loss.txt', help='Path of the losses file.')
+
         args = parser.parse_args()      
 
         # Open log file
@@ -84,20 +86,15 @@ def main():
         model = Learn_Embeddings_with_attention(args)
         model.train()
 
-        # Cross entropy loss if assuming we're mapping to states
-        # criterion = torch.nn.CrossEntropyLoss(ignore_index=0)
-        
         # MSE if we're doing a regression to the next state
         criterion = torch.nn.MSELoss()
-
-
         optimizer = Adam(model.parameters())
 
         best_loss = 1e9
         losses = []
 
         # Iterate through the data
-        for i in tqdm(range(1)):
+        for i in tqdm(range(50)):
 
                 total_loss = 0
 
@@ -130,7 +127,8 @@ def main():
 
                 losses.append(total_loss)
 
-        np.save('args.log_file', losses)
+        # Save the losses
+        np.save(args.loss_file, losses)
 
 if __name__ == "__main__":
     main()
