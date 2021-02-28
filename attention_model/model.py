@@ -12,12 +12,8 @@ class Learn_Embeddings_with_attention(nn.Module):
         # Too expensive.  The alternative is to learn the most common embeddings and let the "Unknown" state be the
         # equivalent of the linear layer
 
-        if args.mode == "linear":
-            self.state_embedding = nn.Linear(args.state_input_size, args.embedding_dimension)
-            # self.action_embedding = nn.Linear(args.action_input_size, args.embedding_dimension)
-        
-        elif args.mode == "embedding":
-            self.state_embedding = nn.Embedding(args.number_of_states, args.embedding_dimension)
+        # Uses a linear layer because states are continuous
+        self.state_embedding = nn.Linear(args.state_input_size, args.embedding_dimension)
 
         # There are only five actions in the discrete space.  Thus, we can strictly use an embedding.
         self.action_embedding = nn.Embedding(args.number_of_actions, args.embedding_dimension)
@@ -102,13 +98,15 @@ class Feedforward(nn.Module):
         super(Feedforward, self).__init__()
 
         layers_dimension        = [args.hidden_dimension for _ in range(args.number_of_layers)]
-        layers_dimension[0]     = args.input_dimension
-        layers_dimension[-1]    = args.output_dimension
+        layers_dimension[0]     = args.state_input_size + 1 # State + action
+        layers_dimension[-1]    = args.output_size
 
         self.layers = nn.ModuleList([nn.Linear(layers_dimension[i],layers_dimension[i+1]) \
                                             for i in range(args.number_of_layers-1)])
 
-    def forward(self, x):
+    def forward(self, state, action):
+        x = torch.cat((state,action.unsqueeze(1)), axis=1).float()
+
         for layer in self.layers:
             x = layer(x)
         return x
