@@ -74,19 +74,17 @@ def main():
         dataset = Dataset(state_features, action_features, targets, state_to_id, action_to_id, args) 
         dataloader = DataLoader(dataset, batch_size=256, shuffle=True) 
 
+        if os.exists(f"./models/{args.model}.pth"):
+                f = open(f'{args.log_directory}/{args.model}_log.txt', 'w')
+                f.write("Loading Model.\n")
+                f.close()
+                model = torch.load(f"./models/{args.model}.pth")
         if args.model == 'feedforward':
                 args.hidden_dimension = 512
                 args.number_of_layers = 3
-
-                if os.exists(f"./models/{args.model}.pth"):
-                        model = torch.load(f"./models/{args.model}.pth")
-                else:
-                        model = Feedforward(args)
+                model = Feedforward(args)
         elif args.model == 'attention':
-                if os.exists(f"./models/{args.model}.pth"):
-                        model = torch.load(f"./models/{args.model}.pth")
-                else:
-                        model = Learn_Embeddings_with_attention(args)
+                model = Learn_Embeddings_with_attention(args)
         else:
                 model = None
                 assert(False, "Invalid Entry")
