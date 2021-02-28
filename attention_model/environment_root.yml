@@ -1,0 +1,38 @@
+name: pku_internship
+channels:
+  - defaults
+dependencies:
+  - _pytorch_select=0.1=cpu_0
+  - blas=1.0=mkl
+  - ca-certificates=2021.1.19=hecd8cb5_0
+  - certifi=2020.12.5=py37hecd8cb5_0
+  - cffi=1.14.5=py37h2125817_0
+  - intel-openmp=2019.4=233
+  - libcxx=10.0.0=1
+  - libedit=3.1.20191231=h1de35cc_1
+  - libffi=3.3=hb1e8313_2
+  - libmklml=2019.0.5=0
+  - llvm-openmp=10.0.0=h28b9765_0
+  - mkl=2019.4=233
+  - mkl-service=2.3.0=py37h9ed2024_0
+  - mkl_fft=1.2.0=py37hc64f4ea_0
+  - mkl_random=1.1.1=py37h959d312_0
+  - ncurses=6.2=h0a44026_1
+  - ninja=1.10.2=py37hf7b0b51_0
+  - numpy=1.19.2=py37h456fd55_0
+  - numpy-base=1.19.2=py37hcfb5961_0
+  - openssl=1.1.1i=h9ed2024_0
+  - pip=20.3.3=py37hecd8cb5_0
+  - pycparser=2.20=py_2
+  - python=3.7.9=h26836e1_0
+  - pytorch=1.6.0=cpu_py37hd70000b_0
+  - readline=8.1=h9ed2024_0
+  - setuptools=52.0.0=py37hecd8cb5_0
+  - six=1.15.0=py37hecd8cb5_0
+  - sqlite=3.33.0=hffcf06c_0
+  - tk=8.6.10=hb0a8c7a_0
+  - tqdm=4.56.0=pyhd3eb1b0_0
+  - wheel=0.36.2=pyhd3eb1b0_0
+  - xz=5.2.5=h1de35cc_0
+  - zlib=1.2.11=h1de35cc_3
+prefix: /Users/yubyanj/opt/anaconda3/envs/pku_internship
