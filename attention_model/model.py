@@ -98,14 +98,14 @@ class Feedforward(nn.Module):
         super(Feedforward, self).__init__()
 
         layers_dimension        = [args.hidden_dimension for _ in range(args.number_of_layers)]
-        layers_dimension[0]     = args.state_input_size + 1 # State + action
+        layers_dimension[0]     = args.state_input_size + args.action_input_size# State + action
         layers_dimension[-1]    = args.output_size
 
         self.layers = nn.ModuleList([nn.Linear(layers_dimension[i],layers_dimension[i+1]) \
                                             for i in range(args.number_of_layers-1)])
 
     def forward(self, state, action):
-        x = torch.cat((state,action.unsqueeze(1)), axis=1).float()
+        x = torch.cat((state,action), axis=1).float()
 
         for layer in self.layers:
             x = layer(x)

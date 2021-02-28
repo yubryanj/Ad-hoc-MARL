@@ -27,9 +27,16 @@ class Dataset(torch.utils.data.Dataset):
         'Generates one sample of data'
         # Select sample
 
-        state = self.states[index]
-        action = self.action_to_id[tuple(self.actions[index])]
-        target = self.targets[index]
+        if self.args.model =='feedforward':
+                state = self.states[index]
+                action = self.actions[index]
+                target = self.targets[index]        
+        elif self.args.model == 'attention':
+                state = self.states[index]
+                action = self.action_to_id[tuple(self.actions[index])]
+                target = self.targets[index]
+        else:
+                assert False, "Not a valid model"
 
         return state, action, target
 
@@ -47,6 +54,8 @@ def main():
         parser.add_argument('-l ', '--log_directory', default='./log', help='Path of the log file.')
 
         args = parser.parse_args()      
+
+        assert args.model in ['attention','feedforward'], "Not a valid model"
 
         # Open log file
         f = open(f'{args.log_directory}/{args.model}_log.txt', 'w')
@@ -74,7 +83,7 @@ def main():
         dataset = Dataset(state_features, action_features, targets, state_to_id, action_to_id, args) 
         dataloader = DataLoader(dataset, batch_size=256, shuffle=True) 
 
-        if os.exists(f"./models/{args.model}.pth"):
+        if os.path.exists(f"./models/{args.model}.pth"):
                 f = open(f'{args.log_directory}/{args.model}_log.txt', 'w')
                 f.write("Loading Model.\n")
                 f.close()
