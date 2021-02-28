@@ -3,32 +3,25 @@ from os import X_OK
 import torch
 from torch import nn
 
-
-class Learn_Embeddings_with_attention(nn.Module):
+class attention_v1(nn.Module):
     def __init__(self, args):
-        super(Learn_Embeddings_with_attention, self).__init__()
+        super(attention_v1, self).__init__()
 
         # Embed the state using a linear layer; the continuous space makes learning embeddings for every space
         # Too expensive.  The alternative is to learn the most common embeddings and let the "Unknown" state be the
         # equivalent of the linear layer
 
         # Uses a linear layer because states are continuous
-        self.state_embedding = nn.Linear(args.state_input_size, args.embedding_dimension)
+        self.state_embedding = nn.Linear(args.state_input_dimension, args.embedding_dimension)
 
         # There are only five actions in the discrete space.  Thus, we can strictly use an embedding.
         self.action_embedding = nn.Embedding(args.number_of_actions, args.embedding_dimension)
-
-        # Defining the attention layers
-
-        # Using Transformers
-        # encoder_layer = nn.TransformerEncoderLayer(d_model=args.embedding_dimension, nhead=1)
-        # self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
 
         # Using attention layer
         self.attention = nn.Linear(args.embedding_dimension, 1)
 
         # Layer to create prediction of output
-        self.output = nn.Linear(args.embedding_dimension,args.output_size)
+        self.output = nn.Linear(args.embedding_dimension, args.output_dimension)
 
 
 
@@ -38,9 +31,7 @@ class Learn_Embeddings_with_attention(nn.Module):
         embedded_action = self.action_embedding(action.long())
 
         # Generate a tensor of shape (batch, items, dimensions)
-        embedded_state = embedded_state.unsqueeze(1)
-        embedded_action = embedded_action.unsqueeze(1)
-        embedded_input = torch.cat((embedded_state,embedded_action), axis=1)
+        embedded_input = torch.cat((embedded_state,embedded_action),axis=1)
 
         # Feed the tensor into the transformer to learn encodings
         weights = []
@@ -53,11 +44,63 @@ class Learn_Embeddings_with_attention(nn.Module):
         # Normalize the weights
         normalized_weights = nn.functional.softmax(weights, dim=1).unsqueeze(1)
 
-        # Apply the attention weights to the embeddings
-        attended_embedding = torch.bmm(normalized_weights, embedded_input)
+        # Apply the attention weights to the action embeddings
+        predictions_input = torch.bmm(normalized_weights, embedded_input).squeeze()
 
         # Generate prediction of next state
-        predictions = self.output(attended_embedding)
+        predictions = self.output(predictions_input)
+        
+        return predictions
+
+
+
+class attention_v2(nn.Module):
+    def __init__(self, args):
+        super(attention_v2, self).__init__()
+
+        # Embed the state using a linear layer; the continuous space makes learning embeddings for every space
+        # Too expensive.  The alternative is to learn the most common embeddings and let the "Unknown" state be the
+        # equivalent of the linear layer
+
+        # Uses a linear layer because states are continuous
+        self.state_embedding = nn.Linear(args.state_input_dimension * args.max_number_of_agents, args.embedding_dimension)
+
+        # There are only five actions in the discrete space.  Thus, we can strictly use an embedding.
+        self.action_embedding = nn.Embedding(args.number_of_actions, args.embedding_dimension)
+
+        # Using attention layer
+        self.attention = nn.Linear(args.embedding_dimension, 1)
+
+        # Layer to create prediction of output
+        self.output = nn.Linear(args.embedding_dimension * 2, args.output_dimension)
+
+
+
+    def forward(self, state, action):
+        batch_size = state.shape[0]
+        state = state.reshape(batch_size,-1)
+        # Embed the state and action
+        embedded_state = self.state_embedding(state.float())
+        embedded_action = self.action_embedding(action.long())
+
+        # Feed the tensor into the transformer to learn encodings
+        weights = []
+        for embedding in embedded_action:
+            weights.append(self.attention(embedding))
+
+        # Convert weights into a tensor
+        weights = torch.cat(weights,dim=1).T
+
+        # Normalize the weights
+        normalized_weights = nn.functional.softmax(weights, dim=1).unsqueeze(1)
+
+        # Apply the attention weights to the embeddings
+        attended_action_embedding = torch.bmm(normalized_weights, embedded_action).squeeze()
+
+        prediction_input = torch.cat((embedded_state,attended_action_embedding),dim=1)
+
+        # Generate prediction of next state
+        predictions = self.output(prediction_input)
         
         return predictions
 
@@ -71,8 +114,8 @@ class Learn_Embeddings(nn.Module):
         # equivalent of the linear layer
 
         if args.mode == "linear":
-            self.state_embedding = nn.Linear(args.state_input_size, args.embedding_dimension)
-            # self.action_embedding = nn.Linear(args.action_input_size, args.embedding_dimension)
+            self.state_embedding = nn.Linear(args.state_input_dimension, args.embedding_dimension)
+            # self.action_embedding = nn.Linear(args.action_input_dimension, args.embedding_dimension)
         
         elif args.mode == "embedding":
             self.state_embedding = nn.Embedding(args.number_of_states, args.embedding_dimension)
@@ -80,7 +123,7 @@ class Learn_Embeddings(nn.Module):
         self.action_embedding = nn.Embedding(args.number_of_actions, args.embedding_dimension)
 
         # There are only five actions in the discrete space.  Thus, we can strictly use an embedding.
-        self.linear = nn.Linear(args.embedding_dimension * 2,args.output_size)
+        self.linear = nn.Linear(args.embedding_dimension * 2,args.output_dimension)
 
     def forward(self, state, action):
         embedded_state = self.state_embedding(state.float())
@@ -98,13 +141,16 @@ class Feedforward(nn.Module):
         super(Feedforward, self).__init__()
 
         layers_dimension        = [args.hidden_dimension for _ in range(args.number_of_layers)]
-        layers_dimension[0]     = args.state_input_size + args.action_input_size# State + action
-        layers_dimension[-1]    = args.output_size
+        layers_dimension[0]     = (args.state_input_dimension + args.action_input_dimension) * args.max_number_of_agents
+        layers_dimension[-1]    = args.output_dimension
 
         self.layers = nn.ModuleList([nn.Linear(layers_dimension[i],layers_dimension[i+1]) \
                                             for i in range(args.number_of_layers-1)])
 
     def forward(self, state, action):
+        batch_size = state.shape[0]
+        state = state.reshape(batch_size, -1)
+        action = action.reshape(batch_size, -1)
         x = torch.cat((state,action), axis=1).float()
 
         for layer in self.layers:
