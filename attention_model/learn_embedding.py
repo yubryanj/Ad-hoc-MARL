@@ -108,7 +108,7 @@ def main():
         parser = argparse.ArgumentParser(description=None)
         parser.add_argument('-m ', '--model', default='feedforward', help='Path of the model.')
         parser.add_argument('-l ', '--log_directory', default='./log', help='Path of the log file.')
-        parser.add_argument('-ma ', '--max_number_of_agents', default=6, help='Maximum number of agents')
+        parser.add_argument('-a ', '--max_number_of_agents', default=6, help='Maximum number of agents')
         parser.add_argument('-n ', '--n_epochs', default=100, help='Number of epochs to run')
         parser.add_argument('-b ', '--batch_size', default=256, help='Batch size')
         parser.add_argument('-h ', '--hidden_dimension', default=512, help='Hidden dimension size')
