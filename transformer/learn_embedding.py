@@ -51,7 +51,7 @@ def main():
         parser = argparse.ArgumentParser(description=None)
         parser.add_argument('-m ', '--model', default='./models/model.pth', help='Path of the model.')
         parser.add_argument('-w ', '--log_file', default='./log/log.txt', help='Path of the log file.')
-        args = parser.parse_args()
+        args = parser.parse_args()      
 
         # Open log file
         f = open(args.log_file, "w")
@@ -110,7 +110,7 @@ def main():
                         predictions = model.forward(states, actions)
 
                         # Compare the output of the model to the target
-                        loss = criterion(predictions.float(), target.float())
+                        loss = criterion(predictions.squeeze().float(), target.float())
 
                         # Update the model
                         loss.backward()
@@ -130,7 +130,7 @@ def main():
 
                 losses.append(total_loss)
 
-        np.save('./log/losses', losses)
+        np.save('args.log_file', losses)
 
 if __name__ == "__main__":
     main()

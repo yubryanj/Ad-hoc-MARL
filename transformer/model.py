@@ -23,8 +23,13 @@ class Learn_Embeddings_with_attention(nn.Module):
         self.action_embedding = nn.Embedding(args.number_of_actions, args.embedding_dimension)
 
         # Defining the attention layers
-        encoder_layer = nn.TransformerEncoderLayer(d_model=args.embedding_dimension, nhead=1)
-        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
+
+        # Using Transformers
+        # encoder_layer = nn.TransformerEncoderLayer(d_model=args.embedding_dimension, nhead=1)
+        # self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
+
+        # Using attention layer
+        self.attention = nn.Linear(args.embedding_dimension, 1)
 
         # Layer to create prediction of output
         self.output = nn.Linear(args.embedding_dimension,args.output_size)
@@ -39,14 +44,24 @@ class Learn_Embeddings_with_attention(nn.Module):
         # Generate a tensor of shape (batch, items, dimensions)
         embedded_state = embedded_state.unsqueeze(1)
         embedded_action = embedded_action.unsqueeze(1)
-        input = torch.cat((embedded_state,embedded_action), axis=1)
+        embedded_input = torch.cat((embedded_state,embedded_action), axis=1)
 
         # Feed the tensor into the transformer to learn encodings
-        transformer_output = self.transformer_encoder(input)
+        weights = []
+        for embedding in embedded_input:
+            weights.append(self.attention(embedding))
+
+        # Convert weights into a tensor
+        weights = torch.cat(weights,dim=1).T
+
+        # Normalize the weights
+        normalized_weights = nn.functional.softmax(weights, dim=1).unsqueeze(1)
+
+        # Apply the attention weights to the embeddings
+        attended_embedding = torch.bmm(normalized_weights, embedded_input)
 
         # Generate prediction of next state
-        # As per the bert classification model, "pooling" is done by selecting the first hidden state
-        predictions = self.output(transformer_output[:,0,:])
+        predictions = self.output(attended_embedding)
         
         return predictions
 
