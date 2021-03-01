@@ -5,6 +5,7 @@ import os
 from torch.utils.data import DataLoader
 from model import attend_over_actions, Feedforward, attend_over_state_and_actions
 from torch.optim import Adam
+from torch.utils.data.sampler import Sampler
 
 def init_args():
     parser = argparse.ArgumentParser(description=None)
@@ -47,7 +48,9 @@ def initialize_dataloader(args, pad_targets=True):
     # Prepare into a torch dataset
     training_dataset = Dataset(state_features, action_features, targets, action_to_id, args) 
     training_sampler = Variable_Length_Sampler(state_features, args)
-    training_dataloader = DataLoader(training_dataset, batch_size=args.batch_size, sampler=training_sampler) 
+    # training_dataloader = DataLoader(training_dataset, batch_size=args.batch_size, sampler=training_sampler) 
+    training_dataloader = DataLoader(training_dataset, batch_size=args.batch_size, shuffle=True) 
+
     
     validation_dataset = Dataset(val_state_features, val_action_features, val_targets, action_to_id, args) 
     validation_dataloader = DataLoader(validation_dataset, batch_size=1, shuffle=True) 
@@ -120,8 +123,6 @@ def initialize_model(args):
     return model, criterion, optimizer
 
 
-
-from torch.utils.data.sampler import Sampler
 class Variable_Length_Sampler(Sampler):
 
     def __init__(self, data, args):

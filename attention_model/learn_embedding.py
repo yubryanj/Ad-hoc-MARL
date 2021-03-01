@@ -30,11 +30,9 @@ def main():
         while best_validation_loss > 0.10:
 
                 epoch += 1
-                total_loss = 0
+                training_loss = 0
 
                 for observations, actions, target in tqdm(training_dataloader):
-
-                        batch_size = target.shape[0]
 
                         # Zero out the gradient for this round of updates
                         optimizer.zero_grad()
@@ -49,14 +47,13 @@ def main():
                         loss.backward()
                         optimizer.step()
 
-                        total_loss += loss.item()
+                        training_loss += loss.item()
 
                 # Check against the validation dataset
                 model.eval()
                 with torch.no_grad():
                         validation_loss = 0
                         for v_observations, v_actions, v_target in  validation_dataloader:
-                                batch_size = v_target.shape[0]
                                 v_predictions = model.forward(v_observations, v_actions)
                                 v_loss = criterion(v_predictions.flatten().float(), v_target.flatten().float())
                                 validation_loss += v_loss.item()
@@ -73,12 +70,12 @@ def main():
 
                 # Save to log and print to output
                 f = open(f'{args.log_directory}/{args.model}_log.txt', "a")
-                f.write(f'iteration {epoch}s total loss: {total_loss}, validation loss: {validation_loss}\n')
-                print(f'iteration {epoch}s total loss: {total_loss}, validation loss: {validation_loss}\n')
+                f.write(f'iteration {epoch}s total loss: {training_loss}, validation loss: {validation_loss}\n')
+                print(f'iteration {epoch}s total loss: {training_loss}, validation loss: {validation_loss}\n')
                 f.close()
 
                 # Save the losses
-                training_losses.append(total_loss)
+                training_losses.append(training_loss)
                 validation_losses.append(validation_loss)
                 np.save(f'{args.log_directory}/{args.model}_training_losses.npy', training_losses)
                 np.save(f'{args.log_directory}/{args.model}_validation_losses.npy', validation_losses)
