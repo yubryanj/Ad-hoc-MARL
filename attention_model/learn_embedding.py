@@ -8,7 +8,7 @@ from utils import initialize_dataloader, initialize_model
 def main():
 
         parser = argparse.ArgumentParser(description=None)
-        parser.add_argument('-m ', '--model', default='attend_over_actions', help='Path of the model.')
+        parser.add_argument('-m ', '--model', default='central_model', help='Path of the model.')
         parser.add_argument('-l ', '--log_directory', default='./log', help='Path of the log file.')
         parser.add_argument('-a ', '--max_number_of_agents', default=6, help='Maximum number of agents')
         parser.add_argument('-n ', '--n_epochs', default=100, help='Number of epochs to run')
@@ -21,7 +21,7 @@ def main():
 
         args = parser.parse_args()      
 
-        assert args.model in ['attend_over_state_and_actions','attend_over_actions','feedforward'], "Not a valid model"
+        assert args.model in ['attend_over_state_and_actions','attend_over_actions','central_model','Feedforward'], "Not a valid model"
 
         # Open log file
         f = open(f'{args.log_directory}/{args.model}_log.txt', 'w')

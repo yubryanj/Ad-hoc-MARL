@@ -56,18 +56,18 @@ class Dataset(torch.utils.data.Dataset):
         'Generates one sample of data'
         # Select sample
 
-        if self.args.model =='feedforward':
-                state = self.states[index]
-                action = self.actions[index]
-                target = self.targets[index]        
-        elif self.args.model == 'attend_over_state_and_actions':
-                state = self.states[index]
-                action = np.array([self.action_to_id[tuple(i)] for i in self.actions[index]])
-                target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
-        elif self.args.model == 'attend_over_actions':
-                state = self.states[index]
-                action = np.array([self.action_to_id[tuple(i)] for i in self.actions[index]])
-                target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
+        if self.args.model =='Feedforward':
+            state = self.states[index]
+            action = self.actions[index]
+            target = self.targets[index]        
+        elif self.args.model == 'central_model':
+            state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
+            action = np.array([self.action_to_id[tuple(i)] for i in self.actions[index]]+[6 for _ in range(self.args.max_number_of_agents)])[:self.args.max_number_of_agents]
+            target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
+        elif self.args.model in ['attend_over_state_and_actions','attend_over_actions']:
+            state = self.states[index]
+            action = np.array([self.action_to_id[tuple(i)] for i in self.actions[index]])
+            target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
         else:
                 assert False, "Not a valid model"
 
@@ -81,11 +81,11 @@ def initialize_model(args):
         f.close()
         print(f"Loading model from './models/{args.model}.pth")
         model = torch.load(f"./models/{args.model}.pth")
-    if args.model == 'feedforward':
+    if args.model == 'Feedforward':
         args.hidden_dimension = args.hidden_dimension
         args.number_of_layers = 3
         model = Feedforward(args)
-    elif args.model == 'attend_over_state_and_actions':
+    elif args.model in ['attend_over_state_and_actions','central_model']:
         model = attend_over_state_and_actions(args)
     elif args.model == 'attend_over_actions':
         model = attend_over_actions(args)
