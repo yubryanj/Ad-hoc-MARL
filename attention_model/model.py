@@ -91,7 +91,11 @@ class attend_over_actions(nn.Module):
         # Apply the attention weights to the embeddings
         attended_action_embedding = torch.bmm(normalized_weights, embedded_action).squeeze()
 
-        prediction_input = torch.cat((embedded_observation,attended_action_embedding))
+        if batch_size == 1:
+            embedded_observation = embedded_observation.unsqueeze(0)
+            attended_action_embedding = attended_action_embedding.unsqueeze(0)
+
+        prediction_input = torch.cat((embedded_observation,attended_action_embedding),dim=1)
 
         # Generate prediction of next observation
         predictions = self.output(prediction_input)

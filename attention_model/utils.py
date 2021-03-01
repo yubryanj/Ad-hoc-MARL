@@ -1,9 +1,27 @@
+import argparse
 import numpy as np
 import torch
 import os
 from torch.utils.data import DataLoader
 from model import attend_over_actions, Feedforward, attend_over_state_and_actions
 from torch.optim import Adam
+
+def init_args():
+    parser = argparse.ArgumentParser(description=None)
+    parser.add_argument('-m ', '--model', default='central_model', help='Path of the model.')
+    parser.add_argument('-l ', '--log_directory', default='./log', help='Path of the log file.')
+    parser.add_argument('-a ', '--max_number_of_agents', default=6, help='Maximum number of agents')
+    parser.add_argument('-b ', '--batch_size', default=512, help='Batch size')
+    parser.add_argument('-h ', '--hidden_dimension', default=512, help='Hidden dimension size')
+    parser.add_argument('-e ', '--embedding_dimension', default=512, help='Embedding dimension size')
+    parser.add_argument('-t ', '--training_dataset', default='./data/training_v1.npy', help='Path to training dataset')
+    parser.add_argument('-te ', '--test_dataset', default='./data/test_v1.npy', help='Path to test dataset')
+    parser.add_argument('-v ', '--validation_dataset', default='./data/validation_v1.npy', help='Path to validation dataset')
+
+    args = parser.parse_args()   
+    assert args.model in ['attend_over_state_and_actions', 'attend_over_actions', 'central_model', 'Feedforward'], "Not a valid model"
+   
+    return args
 
 
 def initialize_dataloader(args, pad_targets=True):
@@ -28,9 +46,12 @@ def initialize_dataloader(args, pad_targets=True):
 
     # Prepare into a torch dataset
     training_dataset = Dataset(state_features, action_features, targets, action_to_id, args) 
-    training_dataloader = DataLoader(training_dataset, batch_size=args.batch_size, shuffle=True) 
+    training_sampler = Variable_Length_Sampler(state_features, args)
+    training_dataloader = DataLoader(training_dataset, batch_size=args.batch_size, sampler=training_sampler) 
+    
     validation_dataset = Dataset(val_state_features, val_action_features, val_targets, action_to_id, args) 
-    validation_dataloader = DataLoader(validation_dataset, batch_size=args.batch_size, shuffle=True) 
+    validation_dataloader = DataLoader(validation_dataset, batch_size=1, shuffle=True) 
+
     test_dataset = Dataset(test_state_features, test_action_features, test_targets, action_to_id, args) 
     test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True) 
 
@@ -97,3 +118,40 @@ def initialize_model(args):
     optimizer = Adam(model.parameters())
 
     return model, criterion, optimizer
+
+
+
+from torch.utils.data.sampler import Sampler
+class Variable_Length_Sampler(Sampler):
+
+    def __init__(self, data, args):
+        self.args = args
+        self.data = self.process_data(data)
+        self.n_samples = len(data)
+
+    def process_data(self, data):
+        processed_data = {}
+        for i in range(1, self.args.max_number_of_agents + 1):
+            processed_data[i] = []
+
+        for i, sample in enumerate(data):
+            processed_data[len(sample)].append(i)        
+        return processed_data
+
+    def __iter__(self):
+        subset = []
+        while len(subset) == 0:
+            # Sample the number of agents for this iteration
+            number_of_agents = np.random.randint(1, self.args.max_number_of_agents)
+            subset = self.data[number_of_agents]
+            print(f"Training on subset with {number_of_agents} agents")
+        
+        # Shuffle the samples
+        np.random.shuffle(subset)
+
+        return iter(subset)
+
+    def __len__(self):
+        return self.n_samples
+
+

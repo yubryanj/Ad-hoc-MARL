@@ -1,27 +1,13 @@
-import argparse
 import torch
 import numpy as np
 from tqdm import tqdm
-from utils import initialize_dataloader, initialize_model
+from utils import initialize_dataloader, initialize_model, init_args
+
 
 
 def main():
 
-        parser = argparse.ArgumentParser(description=None)
-        parser.add_argument('-m ', '--model', default='central_model', help='Path of the model.')
-        parser.add_argument('-l ', '--log_directory', default='./log', help='Path of the log file.')
-        parser.add_argument('-a ', '--max_number_of_agents', default=6, help='Maximum number of agents')
-        parser.add_argument('-n ', '--n_epochs', default=100, help='Number of epochs to run')
-        parser.add_argument('-b ', '--batch_size', default=1, help='Batch size')
-        parser.add_argument('-h ', '--hidden_dimension', default=512, help='Hidden dimension size')
-        parser.add_argument('-e ', '--embedding_dimension', default=512, help='Embedding dimension size')
-        parser.add_argument('-t ', '--training_dataset', default='./data/training_v1.npy', help='Path to training dataset')
-        parser.add_argument('-te ', '--test_dataset', default='./data/test_v1.npy', help='Path to test dataset')
-        parser.add_argument('-v ', '--validation_dataset', default='./data/validation_v1.npy', help='Path to validation dataset')
-
-        args = parser.parse_args()      
-
-        assert args.model in ['attend_over_state_and_actions','attend_over_actions','central_model','Feedforward'], "Not a valid model"
+        args = init_args()
 
         # Open log file
         f = open(f'{args.log_directory}/{args.model}_log.txt', 'w')
@@ -57,7 +43,7 @@ def main():
                         predictions = model.forward(observations, actions)
 
                         # Compare the output of the model to the target
-                        loss = criterion(predictions.reshape(batch_size,-1).float(), target.reshape(batch_size,-1).float())
+                        loss = criterion(predictions.flatten().float(), target.flatten().float())
 
                         # Update the model
                         loss.backward()
@@ -72,7 +58,7 @@ def main():
                         for v_observations, v_actions, v_target in  validation_dataloader:
                                 batch_size = v_target.shape[0]
                                 v_predictions = model.forward(v_observations, v_actions)
-                                v_loss = criterion(v_predictions.float(), v_target.reshape(batch_size,-1).float())
+                                v_loss = criterion(v_predictions.flatten().float(), v_target.flatten().float())
                                 validation_loss += v_loss.item()
 
                         if validation_loss < best_validation_loss:
@@ -84,10 +70,6 @@ def main():
                                 best_validation_loss = validation_loss
 
                 model.train()
-                
-                # Save the losses
-                training_losses.append(total_loss)
-                validation_losses.append(validation_loss)
 
                 # Save to log and print to output
                 f = open(f'{args.log_directory}/{args.model}_log.txt', "a")
@@ -96,6 +78,8 @@ def main():
                 f.close()
 
                 # Save the losses
+                training_losses.append(total_loss)
+                validation_losses.append(validation_loss)
                 np.save(f'{args.log_directory}/{args.model}_training_losses.npy', training_losses)
                 np.save(f'{args.log_directory}/{args.model}_validation_losses.npy', validation_losses)
 
