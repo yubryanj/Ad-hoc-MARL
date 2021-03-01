@@ -95,9 +95,9 @@ def main():
                 print(f'iteration {epoch}s total loss: {total_loss}, validation loss: {validation_loss}\n')
                 f.close()
 
-        # Save the losses
-        np.save(f'{args.log_directory}/{args.model}_training_losses.npy', training_losses)
-        np.save(f'{args.log_directory}/{args.model}_validation_losses.npy', validation_losses)
+                # Save the losses
+                np.save(f'{args.log_directory}/{args.model}_training_losses.npy', training_losses)
+                np.save(f'{args.log_directory}/{args.model}_validation_losses.npy', validation_losses)
 
 
 if __name__ == "__main__":
