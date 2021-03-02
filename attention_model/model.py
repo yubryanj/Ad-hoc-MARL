@@ -6,23 +6,18 @@ class multiheaded_attention_sa(nn.Module):
     def __init__(self,args):
         super(multiheaded_attention_sa, self).__init__()
         self.args = args
-        self.args.embedding_dimension=6
         
         self.observation_embedding = nn.Linear(1 , self.args.embedding_dimension)
         self.action_embedding = nn.Linear(1, self.args.embedding_dimension)
 
-        self.attention = nn.MultiheadAttention(self.args.embedding_dimension, args.n_heads)
-        # self.attention = nn.Linear(self.args.embedding_dimension,1)
-        
-        self.query = torch.rand(self.args.output_dimension, self.args.batch_size, self.args.embedding_dimension)
-        self.value = torch.rand(self.args.batch_size, 42, self.args.embedding_dimension)
-
+        # self.attention = nn.MultiheadAttention(self.args.embedding_dimension, args.n_heads)
+        self.attention = nn.Linear(self.args.embedding_dimension,1)
         
         self.predict = nn.Linear(self.args.embedding_dimension, 1)
 
         layers_dimension        = [args.hidden_dimension for _ in range(args.hidden_layers)]
         layers_dimension[0]     = self.args.embedding_dimension
-        layers_dimension[-1]    = 1
+        layers_dimension[-1]    = args.output_dimension
         self.layers = nn.ModuleList([nn.Linear(layers_dimension[i],layers_dimension[i+1]) \
                                             for i in range(args.hidden_layers-1)])
 
@@ -38,11 +33,13 @@ class multiheaded_attention_sa(nn.Module):
         x = torch.cat((embedded_observation,action),dim=1)
 
         # Attention
-        # normalized_weights = nn.functional.softmax(self.attention(attention_input),dim=1).permute(0,2,1)
-        # attended_embedding = torch.bmm(normalized_weights, attention_input).squeeze()
-        
+        normalized_weights = nn.functional.softmax(self.attention(x),dim=1).permute(0,2,1)
+        x = torch.bmm(normalized_weights, x)
+
         # Pytorch Attention
-        x = self.attention(self.query, x, self.value)[0].permute(1,0,2)
+        # query = torch.rand(self.args.output_dimension, batch_size, self.args.embedding_dimension)
+        # value = torch.rand(42, batch_size, self.args.embedding_dimension)
+        # x = self.attention(x, x, x)[0].permute(1,0,2)
         
         # Generate prediction of next observation
         for layer in self.layers:
