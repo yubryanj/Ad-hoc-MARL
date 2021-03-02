@@ -83,6 +83,7 @@ def main():
                 np.save(f'{args.log_directory}/{args.model}_training_losses.npy', training_losses)
                 np.save(f'{args.log_directory}/{args.model}_validation_losses.npy', validation_losses)
 
+        print(f'Validation error: {best_validation_loss}')
 
 if __name__ == "__main__":
     main()
