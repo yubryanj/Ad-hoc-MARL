@@ -2,6 +2,48 @@ import torch
 from torch import nn
 
 
+
+class multiheaded_attention_sa(nn.Module):
+
+    def __init__(self,args):
+        super(multiheaded_attention_sa, self).__init__()
+        self.args = args
+
+        # Uses a linear layer because observations are continuous
+        self.observation_embedding = nn.Linear(args.observation_input_dimension , args.embedding_dimension)
+        self.action_embedding = nn.Embedding(args.number_of_actions, args.embedding_dimension)
+
+        self.attention = nn.MultiheadAttention(args.embedding_dimension, args.n_heads)
+        
+        
+        layers_dimension        = [args.hidden_dimension for _ in range(args.hidden_layers)]
+        layers_dimension[0]     = args.embedding_dimension
+        layers_dimension[-1]    = args.output_dimension
+        self.layers = nn.ModuleList([nn.Linear(layers_dimension[i],layers_dimension[i+1]) \
+                                            for i in range(args.hidden_layers-1)])
+
+
+    def forward(self, observation, action):
+        batch_size = observation.shape[0]
+        embedded_observation = self.observation_embedding(observation.float())
+
+        action = self.action_embedding(action.long())
+        
+        attention_input = torch.cat((embedded_observation,action),dim=1).permute(1,0,2)
+        
+        output = torch.rand(1, batch_size, self.args.embedding_dimension)
+        attended_action_embedding = self.attention(output, attention_input, attention_input)[0].permute(1,0,2)
+
+        x = attended_action_embedding
+        # Generate prediction of next observation
+        for layer in self.layers:
+            x = layer(x)
+
+        predictions = x
+        
+        return predictions
+
+
 class multiheaded_attention(nn.Module):
 
     def __init__(self,args):
@@ -12,7 +54,7 @@ class multiheaded_attention(nn.Module):
         # Uses a linear layer because observations are continuous
         self.observation_embedding = nn.Linear(self.observation_embedding_input_dimension , args.embedding_dimension)
 
-        self.action_embedding = nn.Embedding(args.number_of_actions, args.embedding_dimension)
+        self.action_embedding = nn.Linear(args.action_input_dimension, args.embedding_dimension)
         self.attention = nn.MultiheadAttention(args.embedding_dimension, args.n_heads)
         
         
@@ -28,8 +70,7 @@ class multiheaded_attention(nn.Module):
         observation = observation.reshape(batch_size,-1)
         embedded_observation = self.observation_embedding(observation.float())
 
-
-        action = self.action_embedding(action.long()).permute(1,0,2)
+        action = self.action_embedding(action.float()).permute(1,0,2)
         output = torch.rand(1, batch_size, self.args.embedding_dimension)
         attended_action_embedding = self.attention(output, action, action)[0].permute(1,0,2).squeeze()
 
@@ -112,7 +153,9 @@ class attend_over_actions(nn.Module):
         self.observation_embedding = nn.Linear(self.observation_embedding_input_dimension , args.embedding_dimension)
 
         # There are only five actions in the discrete space.  Thus, we can strictly use an embedding.
-        self.action_embedding = nn.Embedding(args.number_of_actions, args.embedding_dimension)
+        # self.action_embedding = nn.Embedding(args.number_of_actions, args.embedding_dimension)
+        self.action_embedding = nn.Linear(args.action_input_dimension, args.embedding_dimension)
+
 
         # Using attention layer
         self.attention = nn.Linear(args.embedding_dimension, 1)
@@ -136,7 +179,7 @@ class attend_over_actions(nn.Module):
 
         # Embed the observation and action
         embedded_observation = self.observation_embedding(observation.float()).squeeze()
-        embedded_action = self.action_embedding(action.long())
+        embedded_action = self.action_embedding(action.float())
 
         # Feed the tensor into the transformer to learn encodings
         weights = []

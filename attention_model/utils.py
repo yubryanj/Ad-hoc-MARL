@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import os
 from torch.utils.data import DataLoader
-from model import attend_over_actions, Feedforward, attend_over_state_and_actions, multiheaded_attention
+from model import attend_over_actions, Feedforward, attend_over_state_and_actions, multiheaded_attention, multiheaded_attention_sa
 from torch.optim import Adam
 from torch.utils.data.sampler import Sampler
 
@@ -13,16 +13,16 @@ def init_args():
     parser.add_argument('-l ', '--log_directory', default='./log', help='Path of the log file.')
     parser.add_argument('-a ', '--max_number_of_agents', default=6, type=int, help='Maximum number of agents')
     parser.add_argument('-b ', '--batch_size', default=512, type=int, help='Batch size')
-    parser.add_argument('-hd ', '--hidden_dimension', default=256, type=int, help='Hidden dimension size')
-    parser.add_argument('-e ', '--embedding_dimension', default=256, type=int, help='Embedding dimension size')
+    parser.add_argument('-hd ', '--hidden_dimension', default=32, type=int, help='Hidden dimension size')
+    parser.add_argument('-e ', '--embedding_dimension', default=32, type=int, help='Embedding dimension size')
     parser.add_argument('-t ', '--training_dataset', default='./data/training_v1.npy', help='Path to training dataset')
     parser.add_argument('-te ', '--test_dataset', default='./data/test_v1.npy', help='Path to test dataset')
     parser.add_argument('-v ', '--validation_dataset', default='./data/validation_v1.npy', help='Path to validation dataset')
     parser.add_argument('-hl ', '--hidden_layers', default=3, type=int, help='Number of hidden layers in the MLP')
-    parser.add_argument('-nh ', '--n_heads', default=4, type=int, help='Number of attention heads')
+    parser.add_argument('-nh ', '--n_heads', default=1, type=int, help='Number of attention heads')
 
     args = parser.parse_args()   
-    assert args.model in ['mha', 'attend_over_state_and_actions', 'attend_over_actions', 'central_model', 'Feedforward'], "Not a valid model"
+    assert args.model in ['mha', 'mha_sa', 'attend_over_state_and_actions', 'attend_over_actions', 'central_model', 'Feedforward'], "Not a valid model"
    
     return args
 
@@ -89,9 +89,9 @@ class Training_Dataset(torch.utils.data.Dataset):
         'Generates one sample of data'
         # Select sample
 
-        if self.args.model =='Feedforward':
+        if self.args.model in ['Feedforward','attend_over_actions','mha']:
             state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
-            action = np.vstack((self.actions[index],np.zeros((self.args.max_number_of_agents,5))))[:self.args.max_number_of_agents,:]
+            action = np.vstack((self.actions[index],np.zeros((self.args.max_number_of_agents, self.args.action_input_dimension))))[:self.args.max_number_of_agents,:]
             target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
         else:
             state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
@@ -128,13 +128,14 @@ class Dataset(torch.utils.data.Dataset):
             state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
             action = np.array([self.action_to_id[tuple(i)] for i in self.actions[index]]+[6 for _ in range(self.args.max_number_of_agents)])[:self.args.max_number_of_agents]
             target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
-        elif self.args.model in ['attend_over_state_and_actions']:
+        elif self.args.model in ['attend_over_state_and_actions','mha_sa']:
             state = self.states[index]
             action = np.array([self.action_to_id[tuple(i)] for i in self.actions[index]])
             target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
         elif self.args.model in ['attend_over_actions','mha']:
             state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
-            action = np.array([self.action_to_id[tuple(i)] for i in self.actions[index]])
+            # action = np.array([self.action_to_id[tuple(i)] for i in self.actions[index]])
+            action = np.vstack((self.actions[index],np.zeros((self.args.max_number_of_agents,5))))[:self.args.max_number_of_agents,:]
             target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
         else:
                 assert False, "Not a valid model"
@@ -157,6 +158,8 @@ def initialize_model(args):
         model = attend_over_actions(args)
     elif args.model =='mha':
         model = multiheaded_attention(args)
+    elif args.model =='mha_sa':
+        model = multiheaded_attention_sa(args)
     else:
         model = None
         assert(False, "Invalid Entry")

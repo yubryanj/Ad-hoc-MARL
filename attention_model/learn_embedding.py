@@ -3,6 +3,17 @@ import numpy as np
 from tqdm import tqdm
 from utils import initialize_dataloader, initialize_model, init_args
 
+def validate(model, validation_dataloader, criterion):
+        validation_loss = 0
+        model.eval()
+        with torch.no_grad():
+                for v_observations, v_actions, v_target in  validation_dataloader:
+                        v_predictions = model.forward(v_observations, v_actions)
+                        v_loss = criterion(v_predictions.flatten().float(), v_target.flatten().float())
+                        validation_loss += v_loss.item()
+        model.train()
+        return validation_loss
+
 
 
 def main():
@@ -20,11 +31,11 @@ def main():
         # Prepare the model
         model, criterion, optimizer = initialize_model(args)
 
-        best_validation_loss = float('inf')
+        best_validation_loss = validate(model,validation_dataloader, criterion)
         training_losses = []
         validation_losses = []
         model.train()
-        epoch = 0
+        epoch = 0        
 
         # Iterate through the data
         while best_validation_loss > 0.10:
@@ -50,23 +61,15 @@ def main():
                         training_loss += loss.item()
 
                 # Check against the validation dataset
-                model.eval()
-                with torch.no_grad():
-                        validation_loss = 0
-                        for v_observations, v_actions, v_target in  validation_dataloader:
-                                v_predictions = model.forward(v_observations, v_actions)
-                                v_loss = criterion(v_predictions.flatten().float(), v_target.flatten().float())
-                                validation_loss += v_loss.item()
+                validation_loss = validate(model,validation_dataloader, criterion)
 
-                        if validation_loss < best_validation_loss:
-                                f = open(f'{args.log_directory}/{args.model}_log.txt', "a")
-                                f.write(f"Saving model on iteration {epoch}\n")
-                                print(f"Saving model on iteration {epoch}\n")
-                                torch.save(model, f"./models/{args.model}.pth")
-                                f.close()
-                                best_validation_loss = validation_loss
-
-                model.train()
+                if validation_loss < best_validation_loss:
+                        f = open(f'{args.log_directory}/{args.model}_log.txt', "a")
+                        f.write(f"Saving model on iteration {epoch}\n")
+                        print(f"Saving model on iteration {epoch}\n")
+                        torch.save(model, f"./models/{args.model}.pth")
+                        f.close()
+                        best_validation_loss = validation_loss
 
                 # Save to log and print to output
                 f = open(f'{args.log_directory}/{args.model}_log.txt', "a")
