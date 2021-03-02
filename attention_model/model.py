@@ -8,10 +8,9 @@ class multiheaded_attention_sa(nn.Module):
     def __init__(self,args):
         super(multiheaded_attention_sa, self).__init__()
         self.args = args
-
-        # Uses a linear layer because observations are continuous
-        self.observation_embedding = nn.Linear(args.observation_input_dimension , args.embedding_dimension)
-        self.action_embedding = nn.Embedding(args.number_of_actions, args.embedding_dimension)
+        
+        self.observation_embedding = nn.Linear(1 , args.embedding_dimension)
+        self.action_embedding = nn.Linear(1, args.embedding_dimension)
 
         self.attention = nn.MultiheadAttention(args.embedding_dimension, args.n_heads)
         
@@ -25,14 +24,16 @@ class multiheaded_attention_sa(nn.Module):
 
     def forward(self, observation, action):
         batch_size = observation.shape[0]
+        observation = observation.reshape(batch_size,-1,1)
         embedded_observation = self.observation_embedding(observation.float())
 
-        action = self.action_embedding(action.long())
+        action = action.reshape(batch_size,-1,1)
+        action = self.action_embedding(action.float())
         
         attention_input = torch.cat((embedded_observation,action),dim=1).permute(1,0,2)
         
         output = torch.rand(1, batch_size, self.args.embedding_dimension)
-        attended_action_embedding = self.attention(output, attention_input, attention_input)[0].permute(1,0,2)
+        attended_action_embedding = self.attention(output, attention_input, attention_input, need_weights=False)[0].permute(1,0,2)
 
         x = attended_action_embedding
         # Generate prediction of next observation
