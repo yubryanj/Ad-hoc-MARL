@@ -13,7 +13,7 @@ class multiheaded_attention(nn.Module):
         self.observation_embedding = nn.Linear(self.observation_embedding_input_dimension , args.embedding_dimension)
 
         self.action_embedding = nn.Embedding(args.number_of_actions, args.embedding_dimension)
-        self.attention = nn.MultiheadAttention(args.embedding_dimension, 1)
+        self.attention = nn.MultiheadAttention(args.embedding_dimension, args.n_heads)
         
         
         layers_dimension        = [args.hidden_dimension for _ in range(args.hidden_layers)]

@@ -19,6 +19,7 @@ def init_args():
     parser.add_argument('-te ', '--test_dataset', default='./data/test_v1.npy', help='Path to test dataset')
     parser.add_argument('-v ', '--validation_dataset', default='./data/validation_v1.npy', help='Path to validation dataset')
     parser.add_argument('-hl ', '--hidden_layers', default=3, type=int, help='Number of hidden layers in the MLP')
+    parser.add_argument('-nh ', '--n_heads', default=4, type=int, help='Number of attention heads')
 
     args = parser.parse_args()   
     assert args.model in ['mha', 'attend_over_state_and_actions', 'attend_over_actions', 'central_model', 'Feedforward'], "Not a valid model"
