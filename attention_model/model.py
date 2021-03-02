@@ -17,6 +17,12 @@ class attend_over_state_and_actions(nn.Module):
         # Layer to create prediction of output
         self.output = nn.Linear(args.embedding_dimension, args.output_dimension)
 
+        layers_dimension        = [args.hidden_dimension for _ in range(args.hidden_layers)]
+        layers_dimension[0]     = args.embedding_dimension * 2
+        layers_dimension[-1]    = args.output_dimension
+        self.layers = nn.ModuleList([nn.Linear(layers_dimension[i],layers_dimension[i+1]) \
+                                            for i in range(args.hidden_layers-1)])
+
 
     def forward(self, observation, action):
         # Embed the observation and action
@@ -63,11 +69,11 @@ class attend_over_actions(nn.Module):
         self.attention = nn.Linear(args.embedding_dimension, 1)
 
 
-        layers_dimension        = [args.hidden_dimension for _ in range(3)]
+        layers_dimension        = [args.hidden_dimension for _ in range(args.hidden_layers)]
         layers_dimension[0]     = args.embedding_dimension * 2
         layers_dimension[-1]    = args.output_dimension
         self.layers = nn.ModuleList([nn.Linear(layers_dimension[i],layers_dimension[i+1]) \
-                                            for i in range(3-1)])
+                                            for i in range(args.hidden_layers-1)])
         # Layer to create prediction of output
         # self.output = nn.Linear(args.embedding_dimension * 2, args.output_dimension)
 
@@ -118,12 +124,12 @@ class Feedforward(nn.Module):
     def __init__(self, args):
         super(Feedforward, self).__init__()
 
-        layers_dimension        = [args.hidden_dimension for _ in range(args.number_of_layers)]
+        layers_dimension        = [args.hidden_dimension for _ in range(args.hidden_layers)]
         layers_dimension[0]     = (args.observation_input_dimension + args.action_input_dimension) * args.max_number_of_agents
         layers_dimension[-1]    = args.output_dimension
 
         self.layers = nn.ModuleList([nn.Linear(layers_dimension[i],layers_dimension[i+1]) \
-                                            for i in range(args.number_of_layers-1)])
+                                            for i in range(args.hidden_layers-1)])
 
     def forward(self, observation, action):
         batch_size = observation.shape[0]

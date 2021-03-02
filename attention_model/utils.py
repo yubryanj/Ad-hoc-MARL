@@ -9,20 +9,18 @@ from torch.utils.data.sampler import Sampler
 
 def init_args():
     parser = argparse.ArgumentParser(description=None)
-    parser.add_argument('-m ', '--model', default='attend_over_actions', help='Path of the model.')
+    parser.add_argument('-m ', '--model', default='attend_over_state_and_actions', help='Path of the model.')
     parser.add_argument('-l ', '--log_directory', default='./log', help='Path of the log file.')
-    parser.add_argument('-a ', '--max_number_of_agents', default=6, help='Maximum number of agents')
-    parser.add_argument('-b ', '--batch_size', default=512, help='Batch size')
-    parser.add_argument('-h ', '--hidden_dimension', default=512, help='Hidden dimension size')
-    parser.add_argument('-e ', '--embedding_dimension', default=512, help='Embedding dimension size')
+    parser.add_argument('-a ', '--max_number_of_agents', default=6, type=int, help='Maximum number of agents')
+    parser.add_argument('-b ', '--batch_size', default=512, type=int, help='Batch size')
+    parser.add_argument('-h ', '--hidden_dimension', default=512, type=int, help='Hidden dimension size')
+    parser.add_argument('-e ', '--embedding_dimension', default=512, type=int, help='Embedding dimension size')
     parser.add_argument('-t ', '--training_dataset', default='./data/training_v1.npy', help='Path to training dataset')
     parser.add_argument('-te ', '--test_dataset', default='./data/test_v1.npy', help='Path to test dataset')
     parser.add_argument('-v ', '--validation_dataset', default='./data/validation_v1.npy', help='Path to validation dataset')
+    parser.add_argument('-hid ', '--hidden_layers', default=3, type=int, help='Number of hidden layers in the MLP')
 
     args = parser.parse_args()   
-    args.hidden_dimension = int(args.hidden_dimension)
-    args.embedding_dimension = int(args.embedding_dimension)
-    args.max_nubmer_of_agents = int(args.max_number_of_agents)
     assert args.model in ['attend_over_state_and_actions', 'attend_over_actions', 'central_model', 'Feedforward'], "Not a valid model"
    
     return args
@@ -145,8 +143,6 @@ def initialize_model(args):
         print(f"Loading model from './models/{args.model}.pth")
         model = torch.load(f"./models/{args.model}.pth")
     if args.model == 'Feedforward':
-        args.hidden_dimension = args.hidden_dimension
-        args.number_of_layers = 3
         model = Feedforward(args)
     elif args.model in ['attend_over_state_and_actions','central_model']:
         model = attend_over_state_and_actions(args)
