@@ -3,25 +3,25 @@ import numpy as np
 import torch
 import os
 from torch.utils.data import DataLoader
-from model import attend_over_actions, Feedforward, attend_over_state_and_actions
+from model import attend_over_actions, Feedforward, attend_over_state_and_actions, multiheaded_attention
 from torch.optim import Adam
 from torch.utils.data.sampler import Sampler
 
 def init_args():
     parser = argparse.ArgumentParser(description=None)
-    parser.add_argument('-m ', '--model', default='attend_over_state_and_actions', help='Path of the model.')
+    parser.add_argument('-m ', '--model', default='mha', help='Path of the model.')
     parser.add_argument('-l ', '--log_directory', default='./log', help='Path of the log file.')
     parser.add_argument('-a ', '--max_number_of_agents', default=6, type=int, help='Maximum number of agents')
     parser.add_argument('-b ', '--batch_size', default=512, type=int, help='Batch size')
-    parser.add_argument('-h ', '--hidden_dimension', default=512, type=int, help='Hidden dimension size')
-    parser.add_argument('-e ', '--embedding_dimension', default=512, type=int, help='Embedding dimension size')
+    parser.add_argument('-hd ', '--hidden_dimension', default=256, type=int, help='Hidden dimension size')
+    parser.add_argument('-e ', '--embedding_dimension', default=256, type=int, help='Embedding dimension size')
     parser.add_argument('-t ', '--training_dataset', default='./data/training_v1.npy', help='Path to training dataset')
     parser.add_argument('-te ', '--test_dataset', default='./data/test_v1.npy', help='Path to test dataset')
     parser.add_argument('-v ', '--validation_dataset', default='./data/validation_v1.npy', help='Path to validation dataset')
-    parser.add_argument('-hid ', '--hidden_layers', default=3, type=int, help='Number of hidden layers in the MLP')
+    parser.add_argument('-hl ', '--hidden_layers', default=3, type=int, help='Number of hidden layers in the MLP')
 
     args = parser.parse_args()   
-    assert args.model in ['attend_over_state_and_actions', 'attend_over_actions', 'central_model', 'Feedforward'], "Not a valid model"
+    assert args.model in ['mha', 'attend_over_state_and_actions', 'attend_over_actions', 'central_model', 'Feedforward'], "Not a valid model"
    
     return args
 
@@ -88,14 +88,16 @@ class Training_Dataset(torch.utils.data.Dataset):
         'Generates one sample of data'
         # Select sample
 
-     
-        state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
-        action = np.array([self.action_to_id[tuple(i)] for i in self.actions[index]]+[6 for _ in range(self.args.max_number_of_agents)])[:self.args.max_number_of_agents]
-        target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
+        if self.args.model =='Feedforward':
+            state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
+            action = np.vstack((self.actions[index],np.zeros((self.args.max_number_of_agents,5))))[:self.args.max_number_of_agents,:]
+            target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
+        else:
+            state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
+            action = np.array([self.action_to_id[tuple(i)] for i in self.actions[index]]+[6 for _ in range(self.args.max_number_of_agents)])[:self.args.max_number_of_agents]
+            target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
 
         return state, action, target
-
-
 
 
 class Dataset(torch.utils.data.Dataset):
@@ -121,12 +123,16 @@ class Dataset(torch.utils.data.Dataset):
             state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
             action = np.vstack((self.actions[index],np.zeros((self.args.max_number_of_agents,5))))[:self.args.max_number_of_agents,:]
             target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
-        elif self.args.model in ['central_model','attend_over_state_and_actions','attend_over_actions']:
+        elif self.args.model in ['central_model']:
             state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
             action = np.array([self.action_to_id[tuple(i)] for i in self.actions[index]]+[6 for _ in range(self.args.max_number_of_agents)])[:self.args.max_number_of_agents]
             target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
-        elif self.args.model in ['attend_over_state_and_actions','attend_over_actions']:
+        elif self.args.model in ['attend_over_state_and_actions']:
             state = self.states[index]
+            action = np.array([self.action_to_id[tuple(i)] for i in self.actions[index]])
+            target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
+        elif self.args.model in ['attend_over_actions','mha']:
+            state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
             action = np.array([self.action_to_id[tuple(i)] for i in self.actions[index]])
             target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
         else:
@@ -148,6 +154,8 @@ def initialize_model(args):
         model = attend_over_state_and_actions(args)
     elif args.model == 'attend_over_actions':
         model = attend_over_actions(args)
+    elif args.model =='mha':
+        model = multiheaded_attention(args)
     else:
         model = None
         assert(False, "Invalid Entry")

@@ -15,7 +15,7 @@ def main():
         f.close()
 
         # Prepare the dataloader
-        training_dataloader, validation_dataloader, test_dataloader, args = initialize_dataloader(args, subset=1000)
+        training_dataloader, validation_dataloader, test_dataloader, args = initialize_dataloader(args, subset=None)
         
         # Prepare the model
         model, criterion, optimizer = initialize_model(args)

@@ -1,6 +1,54 @@
 import torch
 from torch import nn
 
+
+class multiheaded_attention(nn.Module):
+
+    def __init__(self,args):
+        super(multiheaded_attention, self).__init__()
+        self.args = args
+        self.observation_embedding_input_dimension = args.observation_input_dimension * args.max_number_of_agents
+
+        # Uses a linear layer because observations are continuous
+        self.observation_embedding = nn.Linear(self.observation_embedding_input_dimension , args.embedding_dimension)
+
+        self.action_embedding = nn.Embedding(args.number_of_actions, args.embedding_dimension)
+        self.attention = nn.MultiheadAttention(args.embedding_dimension, 1)
+        
+        
+        layers_dimension        = [args.hidden_dimension for _ in range(args.hidden_layers)]
+        layers_dimension[0]     = args.embedding_dimension * 2
+        layers_dimension[-1]    = args.output_dimension
+        self.layers = nn.ModuleList([nn.Linear(layers_dimension[i],layers_dimension[i+1]) \
+                                            for i in range(args.hidden_layers-1)])
+
+
+    def forward(self, observation, action):
+        batch_size = observation.shape[0]
+        observation = observation.reshape(batch_size,-1)
+        embedded_observation = self.observation_embedding(observation.float())
+
+
+        action = self.action_embedding(action.long()).permute(1,0,2)
+        output = torch.rand(1, batch_size, self.args.embedding_dimension)
+        attended_action_embedding = self.attention(output, action, action)[0].permute(1,0,2).squeeze()
+
+        if batch_size == 1:
+            embedded_observation = embedded_observation.squeeze()
+            prediction_input = torch.cat((embedded_observation,attended_action_embedding),dim=0)
+        else:
+            prediction_input = torch.cat((embedded_observation,attended_action_embedding),dim=1)
+
+        x = prediction_input
+        # Generate prediction of next observation
+        for layer in self.layers:
+            x = layer(x)
+
+        predictions = x
+        
+        return predictions
+
+
 class attend_over_state_and_actions(nn.Module):
     def __init__(self, args):
         super(attend_over_state_and_actions, self).__init__()
@@ -13,9 +61,6 @@ class attend_over_state_and_actions(nn.Module):
 
         # Using attention layer
         self.attention = nn.Linear(args.embedding_dimension, 1)
-
-        # Layer to create prediction of output
-        self.output = nn.Linear(args.embedding_dimension, args.output_dimension)
 
         layers_dimension        = [args.hidden_dimension for _ in range(args.hidden_layers)]
         layers_dimension[0]     = args.embedding_dimension * 2
@@ -46,8 +91,12 @@ class attend_over_state_and_actions(nn.Module):
         # Apply the attention weights to the action embeddings
         predictions_input = torch.bmm(normalized_weights, embedded_input).squeeze()
 
+        x = predictions_input
         # Generate prediction of next observation
-        predictions = self.output(predictions_input)
+        for layer in self.layers:
+            x = layer(x)
+
+        predictions = x
         
         return predictions
 
