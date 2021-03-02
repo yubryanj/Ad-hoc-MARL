@@ -1,8 +1,57 @@
 import torch
 from torch import nn
 
+class multiheaded_attention_sa(nn.Module):
+    
+    def __init__(self,args):
+        super(multiheaded_attention_sa, self).__init__()
+        self.args = args
+        self.args.embedding_dimension=6
+        
+        self.observation_embedding = nn.Linear(1 , self.args.embedding_dimension)
+        self.action_embedding = nn.Linear(1, self.args.embedding_dimension)
+
+        self.attention = nn.MultiheadAttention(self.args.embedding_dimension, args.n_heads)
+        # self.attention = nn.Linear(self.args.embedding_dimension,1)
+        
+        self.query = torch.rand(self.args.output_dimension, self.args.batch_size, self.args.embedding_dimension)
+        self.value = torch.rand(self.args.batch_size, 42, self.args.embedding_dimension)
+
+        
+        self.predict = nn.Linear(self.args.embedding_dimension, 1)
+
+        layers_dimension        = [args.hidden_dimension for _ in range(args.hidden_layers)]
+        layers_dimension[0]     = self.args.embedding_dimension
+        layers_dimension[-1]    = 1
+        self.layers = nn.ModuleList([nn.Linear(layers_dimension[i],layers_dimension[i+1]) \
+                                            for i in range(args.hidden_layers-1)])
 
 
+    def forward(self, observation, action):
+        batch_size = observation.shape[0]
+        observation = observation.reshape(batch_size,-1,1)
+        embedded_observation = self.observation_embedding(observation.float())
+
+        action = action.reshape(batch_size,-1,1)
+        action = self.action_embedding(action.float())
+        
+        x = torch.cat((embedded_observation,action),dim=1)
+
+        # Attention
+        # normalized_weights = nn.functional.softmax(self.attention(attention_input),dim=1).permute(0,2,1)
+        # attended_embedding = torch.bmm(normalized_weights, attention_input).squeeze()
+        
+        # Pytorch Attention
+        x = self.attention(self.query, x, self.value)[0].permute(1,0,2)
+        
+        # Generate prediction of next observation
+        for layer in self.layers:
+            x = layer(x)
+        
+        return x
+
+
+"""
 class multiheaded_attention_sa(nn.Module):
 
     def __init__(self,args):
@@ -43,6 +92,7 @@ class multiheaded_attention_sa(nn.Module):
         predictions = x
         
         return predictions
+"""
 
 
 class multiheaded_attention(nn.Module):

@@ -13,8 +13,8 @@ def init_args():
     parser.add_argument('-l ', '--log_directory', default='./log', help='Path of the log file.')
     parser.add_argument('-a ', '--max_number_of_agents', default=6, type=int, help='Maximum number of agents')
     parser.add_argument('-b ', '--batch_size', default=512, type=int, help='Batch size')
-    parser.add_argument('-hd ', '--hidden_dimension', default=64, type=int, help='Hidden dimension size')
-    parser.add_argument('-e ', '--embedding_dimension', default=64, type=int, help='Embedding dimension size')
+    parser.add_argument('-hd ', '--hidden_dimension', default=32, type=int, help='Hidden dimension size')
+    parser.add_argument('-e ', '--embedding_dimension', default=32, type=int, help='Embedding dimension size')
     parser.add_argument('-t ', '--training_dataset', default='./data/training_v1.npy', help='Path to training dataset')
     parser.add_argument('-te ', '--test_dataset', default='./data/test_v1.npy', help='Path to test dataset')
     parser.add_argument('-v ', '--validation_dataset', default='./data/validation_v1.npy', help='Path to validation dataset')
@@ -59,14 +59,14 @@ def initialize_dataloader(args, pad_targets=True, subset = None):
     training_dataset = Training_Dataset(state_features, action_features, targets, action_to_id, args) 
     # training_sampler = Variable_Length_Sampler(state_features, args)
     # training_dataloader = DataLoader(training_dataset, batch_size=args.batch_size, sampler=training_sampler) 
-    training_dataloader = DataLoader(training_dataset, batch_size=args.batch_size, shuffle=True) 
+    training_dataloader = DataLoader(training_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True) 
 
     
-    validation_dataset = Dataset(val_state_features, val_action_features, val_targets, action_to_id, args) 
-    validation_dataloader = DataLoader(validation_dataset, batch_size=1, shuffle=True) 
+    validation_dataset = Training_Dataset(val_state_features, val_action_features, val_targets, action_to_id, args) 
+    validation_dataloader = DataLoader(validation_dataset, batch_size=args.batch_size, shuffle=True, drop_last = True) 
 
     test_dataset = Dataset(test_state_features, test_action_features, test_targets, action_to_id, args) 
-    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True) 
+    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True) 
 
     return training_dataloader, validation_dataloader, test_dataloader, args
 

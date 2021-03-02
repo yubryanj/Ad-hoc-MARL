@@ -7,10 +7,10 @@ def validate(model, validation_dataloader, criterion):
         validation_loss = 0
         model.eval()
         with torch.no_grad():
-                for v_observations, v_actions, v_target in  validation_dataloader:
-                        v_predictions = model.forward(v_observations, v_actions)
-                        v_loss = criterion(v_predictions.flatten().float(), v_target.flatten().float())
-                        validation_loss += v_loss.item()
+                for observations, actions, target in  validation_dataloader:
+                        predictions = model.forward(observations, actions)
+                        loss = criterion(predictions.flatten().float(), target.flatten().float())
+                        validation_loss += loss.item()
         model.train()
         return validation_loss
 
