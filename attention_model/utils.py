@@ -12,7 +12,7 @@ def init_args():
     parser.add_argument('-m ', '--model', default='attend_over_actions', help='Path of the model.')
     parser.add_argument('-l ', '--log_directory', default='./log', help='Path of the log file.')
     parser.add_argument('-a ', '--max_number_of_agents', default=6, help='Maximum number of agents')
-    parser.add_argument('-b ', '--batch_size', default=1, help='Batch size')
+    parser.add_argument('-b ', '--batch_size', default=512, help='Batch size')
     parser.add_argument('-h ', '--hidden_dimension', default=512, help='Hidden dimension size')
     parser.add_argument('-e ', '--embedding_dimension', default=512, help='Embedding dimension size')
     parser.add_argument('-t ', '--training_dataset', default='./data/training_v1.npy', help='Path to training dataset')
@@ -57,7 +57,7 @@ def initialize_dataloader(args, pad_targets=True, subset = None):
     args.output_dimension = args.max_number_of_agents * args.observation_input_dimension
 
     # Prepare into a torch dataset
-    training_dataset = Dataset(state_features, action_features, targets, action_to_id, args) 
+    training_dataset = Training_Dataset(state_features, action_features, targets, action_to_id, args) 
     # training_sampler = Variable_Length_Sampler(state_features, args)
     # training_dataloader = DataLoader(training_dataset, batch_size=args.batch_size, sampler=training_sampler) 
     training_dataloader = DataLoader(training_dataset, batch_size=args.batch_size, shuffle=True) 
@@ -70,6 +70,34 @@ def initialize_dataloader(args, pad_targets=True, subset = None):
     test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True) 
 
     return training_dataloader, validation_dataloader, test_dataloader, args
+
+class Training_Dataset(torch.utils.data.Dataset):
+    
+    'Characterizes a dataset for PyTorch'
+    def __init__(self, states, actions, targets, action_to_id, args):
+        'Initialization'
+        self.states = states
+        self.actions= actions
+        self.targets = targets
+        self.action_to_id = action_to_id
+        self.args = args
+
+    def __len__(self):
+        'Denotes the total number of samples'
+        return len(self.states)
+
+    def __getitem__(self, index):
+        'Generates one sample of data'
+        # Select sample
+
+     
+        state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
+        action = np.array([self.action_to_id[tuple(i)] for i in self.actions[index]]+[6 for _ in range(self.args.max_number_of_agents)])[:self.args.max_number_of_agents]
+        target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
+
+        return state, action, target
+
+
 
 
 class Dataset(torch.utils.data.Dataset):
@@ -95,7 +123,7 @@ class Dataset(torch.utils.data.Dataset):
             state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
             action = np.vstack((self.actions[index],np.zeros((self.args.max_number_of_agents,5))))[:self.args.max_number_of_agents,:]
             target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
-        elif self.args.model in ['central_model']:
+        elif self.args.model in ['central_model','attend_over_state_and_actions','attend_over_actions']:
             state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
             action = np.array([self.action_to_id[tuple(i)] for i in self.actions[index]]+[6 for _ in range(self.args.max_number_of_agents)])[:self.args.max_number_of_agents]
             target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
