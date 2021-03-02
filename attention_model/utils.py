@@ -9,10 +9,10 @@ from torch.utils.data.sampler import Sampler
 
 def init_args():
     parser = argparse.ArgumentParser(description=None)
-    parser.add_argument('-m ', '--model', default='central_model', help='Path of the model.')
+    parser.add_argument('-m ', '--model', default='attend_over_actions', help='Path of the model.')
     parser.add_argument('-l ', '--log_directory', default='./log', help='Path of the log file.')
     parser.add_argument('-a ', '--max_number_of_agents', default=6, help='Maximum number of agents')
-    parser.add_argument('-b ', '--batch_size', default=512, help='Batch size')
+    parser.add_argument('-b ', '--batch_size', default=1, help='Batch size')
     parser.add_argument('-h ', '--hidden_dimension', default=512, help='Hidden dimension size')
     parser.add_argument('-e ', '--embedding_dimension', default=512, help='Embedding dimension size')
     parser.add_argument('-t ', '--training_dataset', default='./data/training_v1.npy', help='Path to training dataset')

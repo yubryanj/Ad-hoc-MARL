@@ -62,8 +62,14 @@ class attend_over_actions(nn.Module):
         # Using attention layer
         self.attention = nn.Linear(args.embedding_dimension, 1)
 
+
+        layers_dimension        = [args.hidden_dimension for _ in range(3)]
+        layers_dimension[0]     = args.embedding_dimension * 2
+        layers_dimension[-1]    = args.output_dimension
+        self.layers = nn.ModuleList([nn.Linear(layers_dimension[i],layers_dimension[i+1]) \
+                                            for i in range(3-1)])
         # Layer to create prediction of output
-        self.output = nn.Linear(args.embedding_dimension * 2, args.output_dimension)
+        # self.output = nn.Linear(args.embedding_dimension * 2, args.output_dimension)
 
 
     def forward(self, observation, action):
@@ -97,8 +103,12 @@ class attend_over_actions(nn.Module):
 
         prediction_input = torch.cat((embedded_observation,attended_action_embedding),dim=1)
 
+        x = prediction_input
         # Generate prediction of next observation
-        predictions = self.output(prediction_input)
+        for layer in self.layers:
+            x = layer(x)
+
+        predictions = x
         
         return predictions
 
