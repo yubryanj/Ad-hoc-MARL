@@ -150,7 +150,7 @@ def initialize_model(args):
         f.close()
         print(f"Loading model from './models/{args.model}.pth")
         model = torch.load(f"./models/{args.model}.pth")
-    if args.model == 'Feedforward':
+    elif args.model == 'Feedforward':
         model = Feedforward(args)
     elif args.model in ['attend_over_state_and_actions','central_model']:
         model = attend_over_state_and_actions(args)
