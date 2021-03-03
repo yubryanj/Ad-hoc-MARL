@@ -12,13 +12,22 @@ class multiheaded_attention_sa(nn.Module):
 
         self.attention = nn.MultiheadAttention(args.embedding_dimension, args.n_heads)
 
-        self.q_projections = nn.Linear(42, args.output_dimension)
+        q_projections = {
+            '42': nn.Linear(42, args.output_dimension),
+            '35': nn.Linear(35, args.output_dimension),
+            '28': nn.Linear(28, args.output_dimension),
+            '21': nn.Linear(21, args.output_dimension),
+            '14': nn.Linear(14, args.output_dimension),
+            '7': nn.Linear(7, args.output_dimension),
+        }
+        self.q_projections = nn.ModuleDict(q_projections)
         self.kv_projection = nn.Linear(args.embedding_dimension, 2 * args.embedding_dimension)        
 
         self.predict = nn.Linear(args.embedding_dimension, 1)
 
 
     def forward(self, observation, action):
+        n_agents = action.shape[1]
         observation_encoding = self.observation_embedding(observation.reshape(self.args.batch_size,-1,1).float())
         action_encoding = self.action_embedding(action.reshape(self.args.batch_size,-1,1).float())
         
@@ -26,13 +35,13 @@ class multiheaded_attention_sa(nn.Module):
         sequence_length = x.shape[1]
 
         # Attention
-        query = self.q_projections(x.permute(0,2,1)).permute(2,0,1)
+        query = self.q_projections[str(sequence_length)](x.permute(0,2,1)).permute(2,0,1)
         key, value = self.kv_projection(x).permute(1,0,2).chunk(2,dim=2)
         x = self.attention(query, key, value)[0].permute(1,0,2)
 
         x = self.predict(x)
         
-        return x
+        return x[:,:n_agents*2,:]
 
 
 
