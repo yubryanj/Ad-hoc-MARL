@@ -57,13 +57,11 @@ def initialize_dataloader(args, pad_targets=True, subset = None):
 
     # Prepare into a torch dataset
     training_dataset = Training_Dataset(state_features, action_features, targets, action_to_id, args) 
-    # training_sampler = Variable_Length_Sampler(state_features, args)
-    # training_dataloader = DataLoader(training_dataset, batch_size=args.batch_size, sampler=training_sampler) 
     training_dataloader = DataLoader(training_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True) 
 
     
     validation_dataset = Training_Dataset(val_state_features, val_action_features, val_targets, action_to_id, args) 
-    validation_dataloader = DataLoader(validation_dataset, batch_size=1, shuffle=True, drop_last = True) 
+    validation_dataloader = DataLoader(validation_dataset, batch_size=args.batch_size, shuffle=True, drop_last = True) 
 
     test_dataset = Dataset(test_state_features, test_action_features, test_targets, action_to_id, args) 
     test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True) 

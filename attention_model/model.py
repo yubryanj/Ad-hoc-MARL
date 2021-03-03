@@ -7,25 +7,26 @@ class multiheaded_attention_sa(nn.Module):
         super(multiheaded_attention_sa, self).__init__()
         self.args = args
         
-        self.observation_embedding = nn.Linear(args.observation_dimension , args.embedding_dimension)
-        self.action_embedding = nn.Linear(args.action_dimension, args.embedding_dimension)
+        self.observation_embedding = nn.Linear(1 , args.embedding_dimension)
+        self.action_embedding = nn.Linear(1, args.embedding_dimension)
 
         self.attention = nn.MultiheadAttention(args.embedding_dimension, args.n_heads)
-        self.q_projection =nn.Linear(12, args.output_dimension)
 
+        self.q_projections = nn.Linear(42, args.output_dimension)
         self.kv_projection = nn.Linear(args.embedding_dimension, 2 * args.embedding_dimension)        
 
         self.predict = nn.Linear(args.embedding_dimension, 1)
 
 
     def forward(self, observation, action):
-        observation_encoding = self.observation_embedding(observation.float())
-        action_encoding = self.action_embedding(action.float())
+        observation_encoding = self.observation_embedding(observation.reshape(self.args.batch_size,-1,1).float())
+        action_encoding = self.action_embedding(action.reshape(self.args.batch_size,-1,1).float())
         
         x = torch.cat((observation_encoding, action_encoding),dim=1)
+        sequence_length = x.shape[1]
 
         # Attention
-        query = self.q_projection(x.permute(0,2,1)).permute(2,0,1)
+        query = self.q_projections(x.permute(0,2,1)).permute(2,0,1)
         key, value = self.kv_projection(x).permute(1,0,2).chunk(2,dim=2)
         x = self.attention(query, key, value)[0].permute(1,0,2)
 
