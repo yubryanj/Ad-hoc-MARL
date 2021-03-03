@@ -51,9 +51,9 @@ def initialize_dataloader(args, pad_targets=True, subset = None):
 
     # Model parameters
     args.number_of_actions = len(action_to_id)
-    args.observation_input_dimension = state_features[0].shape[1]
-    args.action_input_dimension = action_features[0].shape[1]
-    args.output_dimension = args.max_number_of_agents * args.observation_input_dimension
+    args.observation_dimension = state_features[0].shape[1]
+    args.action_dimension = action_features[0].shape[1]
+    args.output_dimension = args.max_number_of_agents * args.observation_imension
 
     # Prepare into a torch dataset
     training_dataset = Training_Dataset(state_features, action_features, targets, action_to_id, args) 
@@ -63,7 +63,7 @@ def initialize_dataloader(args, pad_targets=True, subset = None):
 
     
     validation_dataset = Training_Dataset(val_state_features, val_action_features, val_targets, action_to_id, args) 
-    validation_dataloader = DataLoader(validation_dataset, batch_size=args.batch_size, shuffle=True, drop_last = True) 
+    validation_dataloader = DataLoader(validation_dataset, batch_size=1, shuffle=True, drop_last = True) 
 
     test_dataset = Dataset(test_state_features, test_action_features, test_targets, action_to_id, args) 
     test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True) 
@@ -89,9 +89,9 @@ class Training_Dataset(torch.utils.data.Dataset):
         'Generates one sample of data'
         # Select sample
 
-        state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
+        state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_dimension))))[:self.args.max_number_of_agents,:]
         action = np.vstack((self.actions[index],np.zeros((self.args.max_number_of_agents, self.args.action_input_dimension))))[:self.args.max_number_of_agents,:]
-        target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
+        target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_dimension))))[:self.args.max_number_of_agents,:]
 
         return state, action, target
 
@@ -116,21 +116,21 @@ class Dataset(torch.utils.data.Dataset):
         # Select sample
 
         if self.args.model =='Feedforward':
-            state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
+            state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_dimension))))[:self.args.max_number_of_agents,:]
             action = np.vstack((self.actions[index],np.zeros((self.args.max_number_of_agents,5))))[:self.args.max_number_of_agents,:]
-            target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
+            target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_dimension))))[:self.args.max_number_of_agents,:]
         elif self.args.model in ['central_model']:
-            state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
+            state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_dimension))))[:self.args.max_number_of_agents,:]
             action = np.array([self.action_to_id[tuple(i)] for i in self.actions[index]]+[6 for _ in range(self.args.max_number_of_agents)])[:self.args.max_number_of_agents]
-            target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
-        elif self.args.model in ['attend_over_state_and_actions']:
+            target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_dimension))))[:self.args.max_number_of_agents,:]
+        elif self.args.model in ['attend_over_state_and_actions','mha_sa']:
             state = self.states[index]
             action = np.array([self.action_to_id[tuple(i)] for i in self.actions[index]])
-            target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
+            target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_dimension))))[:self.args.max_number_of_agents,:]
         else:
-            state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
+            state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_dimension))))[:self.args.max_number_of_agents,:]
             action = np.vstack((self.actions[index],np.zeros((self.args.max_number_of_agents,5))))[:self.args.max_number_of_agents,:]
-            target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_input_dimension))))[:self.args.max_number_of_agents,:]
+            target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_dimension))))[:self.args.max_number_of_agents,:]
 
         return state, action, target
 

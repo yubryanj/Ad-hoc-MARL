@@ -7,89 +7,33 @@ class multiheaded_attention_sa(nn.Module):
         super(multiheaded_attention_sa, self).__init__()
         self.args = args
         
-        self.observation_embedding = nn.Linear(1 , self.args.embedding_dimension)
-        self.action_embedding = nn.Linear(1, self.args.embedding_dimension)
+        self.observation_embedding = nn.Linear(args.observation_dimension , args.embedding_dimension)
+        self.action_embedding = nn.Linear(args.action_dimension, args.embedding_dimension)
 
-        # self.attention = nn.MultiheadAttention(self.args.embedding_dimension, args.n_heads)
-        self.attention = nn.Linear(self.args.embedding_dimension,1)
-        
-        self.predict = nn.Linear(self.args.embedding_dimension, 1)
+        self.attention = nn.MultiheadAttention(args.embedding_dimension, args.n_heads)
+        self.q_projections = []
+        for n_agents in range(args.max_number_of_agents):
+            self.q_projections.append(nn.Linear(2*n_agents, args.output_dimension))
+        self.kv_projection = nn.Linear(args.embedding_dimension, 2 * args.embedding_dimension)        
 
-        layers_dimension        = [args.hidden_dimension for _ in range(args.hidden_layers)]
-        layers_dimension[0]     = self.args.embedding_dimension
-        layers_dimension[-1]    = args.output_dimension
-        self.layers = nn.ModuleList([nn.Linear(layers_dimension[i],layers_dimension[i+1]) \
-                                            for i in range(args.hidden_layers-1)])
+        self.predict = nn.Linear(args.embedding_dimension, 1)
 
 
     def forward(self, observation, action):
-        batch_size = observation.shape[0]
-        observation = observation.reshape(batch_size,-1,1)
-        embedded_observation = self.observation_embedding(observation.float())
-
-        action = action.reshape(batch_size,-1,1)
-        action = self.action_embedding(action.float())
+        observation_encoding = self.observation_embedding(observation.float())
+        action_encoding = self.action_embedding(action.float())
         
-        x = torch.cat((embedded_observation,action),dim=1)
+        x = torch.cat((observation_encoding, action_encoding),dim=1)
 
         # Attention
-        normalized_weights = nn.functional.softmax(self.attention(x),dim=1).permute(0,2,1)
-        x = torch.bmm(normalized_weights, x)
+        query = self.q_projection(x.permute(0,2,1)).permute(2,0,1)
+        key, value = self.kv_projection(x).permute(1,0,2).chunk(2,dim=2)
+        x = self.attention(query, key, value)[0].permute(1,0,2)
 
-        # Pytorch Attention
-        # query = torch.rand(self.args.output_dimension, batch_size, self.args.embedding_dimension)
-        # value = torch.rand(42, batch_size, self.args.embedding_dimension)
-        # x = self.attention(x, x, x)[0].permute(1,0,2)
-        
-        # Generate prediction of next observation
-        for layer in self.layers:
-            x = layer(x)
+        x = self.predict(x)
         
         return x
 
-
-"""
-class multiheaded_attention_sa(nn.Module):
-
-    def __init__(self,args):
-        super(multiheaded_attention_sa, self).__init__()
-        self.args = args
-        
-        self.observation_embedding = nn.Linear(1 , args.embedding_dimension)
-        self.action_embedding = nn.Linear(1, args.embedding_dimension)
-
-        self.attention = nn.MultiheadAttention(args.embedding_dimension, args.n_heads)
-        
-        
-        layers_dimension        = [args.hidden_dimension for _ in range(args.hidden_layers)]
-        layers_dimension[0]     = args.embedding_dimension
-        layers_dimension[-1]    = args.output_dimension
-        self.layers = nn.ModuleList([nn.Linear(layers_dimension[i],layers_dimension[i+1]) \
-                                            for i in range(args.hidden_layers-1)])
-
-
-    def forward(self, observation, action):
-        batch_size = observation.shape[0]
-        observation = observation.reshape(batch_size,-1,1)
-        embedded_observation = self.observation_embedding(observation.float())
-
-        action = action.reshape(batch_size,-1,1)
-        action = self.action_embedding(action.float())
-        
-        attention_input = torch.cat((embedded_observation,action),dim=1).permute(1,0,2)
-        
-        output = torch.rand(1, batch_size, self.args.embedding_dimension)
-        attended_action_embedding = self.attention(output, attention_input, attention_input, need_weights=False)[0].permute(1,0,2)
-
-        x = attended_action_embedding
-        # Generate prediction of next observation
-        for layer in self.layers:
-            x = layer(x)
-
-        predictions = x
-        
-        return predictions
-"""
 
 
 class multiheaded_attention(nn.Module):
@@ -119,7 +63,7 @@ class multiheaded_attention(nn.Module):
         embedded_observation = self.observation_embedding(observation.float())
 
         action = self.action_embedding(action.float()).permute(1,0,2)
-        output = torch.rand(1, batch_size, self.args.embedding_dimension)
+        output = torch.rand(1, batch_size, args.embedding_dimension)
         attended_action_embedding = self.attention(output, action, action)[0].permute(1,0,2).squeeze()
 
         if batch_size == 1:
