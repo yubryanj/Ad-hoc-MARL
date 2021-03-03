@@ -90,7 +90,7 @@ class Training_Dataset(torch.utils.data.Dataset):
         # Select sample
 
         state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_dimension))))[:self.args.max_number_of_agents,:]
-        action = np.vstack((self.actions[index],np.zeros((self.args.max_number_of_agents, self.args.action_input_dimension))))[:self.args.max_number_of_agents,:]
+        action = np.vstack((self.actions[index],np.zeros((self.args.max_number_of_agents, self.args.action_dimension))))[:self.args.max_number_of_agents,:]
         target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_dimension))))[:self.args.max_number_of_agents,:]
 
         return state, action, target

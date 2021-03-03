@@ -11,9 +11,8 @@ class multiheaded_attention_sa(nn.Module):
         self.action_embedding = nn.Linear(args.action_dimension, args.embedding_dimension)
 
         self.attention = nn.MultiheadAttention(args.embedding_dimension, args.n_heads)
-        self.q_projections = []
-        for n_agents in range(args.max_number_of_agents):
-            self.q_projections.append(nn.Linear(2*n_agents, args.output_dimension))
+        self.q_projection =nn.Linear(12, args.output_dimension)
+
         self.kv_projection = nn.Linear(args.embedding_dimension, 2 * args.embedding_dimension)        
 
         self.predict = nn.Linear(args.embedding_dimension, 1)
