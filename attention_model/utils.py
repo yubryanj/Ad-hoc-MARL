@@ -53,7 +53,7 @@ def initialize_dataloader(args, pad_targets=True, subset = None):
     args.number_of_actions = len(action_to_id)
     args.observation_dimension = state_features[0].shape[1]
     args.action_dimension = action_features[0].shape[1]
-    args.output_dimension = args.max_number_of_agents * args.observation_imension
+    args.output_dimension = args.max_number_of_agents * args.observation_dimension
 
     # Prepare into a torch dataset
     training_dataset = Training_Dataset(state_features, action_features, targets, action_to_id, args) 
