@@ -38,7 +38,7 @@ def main():
         epoch = 0        
 
         # Iterate through the data
-        while best_validation_loss > 0.10:
+        while best_validation_loss > 1e-4:
 
                 epoch += 1
                 training_loss = 0
