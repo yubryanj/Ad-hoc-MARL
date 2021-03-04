@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 
+
 class model_a(nn.Module):
     
     def __init__(self,args):
@@ -18,11 +19,11 @@ class model_a(nn.Module):
         self.predict = nn.Linear(args.embedding_dimension * 2, 1)
 
 
-    def forward(self, observation, action):
-        batch_size = observation.shape[0]
+    def forward(self, state, action):
+        batch_size = state.shape[0]
 
         # Prepare the state encodings
-        state = observation.reshape(batch_size, 1, -1)
+        state = state.reshape(batch_size, 1, -1)
         state_encoding = self.state_embedding(state.float())
         state_encoding = state_encoding.repeat(1,self.args.max_number_of_agents,1)      # Repeat the state for each agent
 

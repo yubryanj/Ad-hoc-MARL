@@ -48,13 +48,11 @@ def initialize_dataloader(args, pad_targets=True, subset = None):
     # Extract the mapping dictionaries
     action_to_id = training_data['action_to_id']
 
-
     # Truncate the dataset
     if subset is not None:
         state_features = state_features[:subset]
         action_features = action_features[:subset]
         targets = targets[:subset]
-
 
     # Model parameters
     args.number_of_actions = len(action_to_id)
@@ -73,6 +71,7 @@ def initialize_dataloader(args, pad_targets=True, subset = None):
     test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True) 
 
     return training_dataloader, validation_dataloader, test_dataloader, args
+
 
 class Dataset(torch.utils.data.Dataset):
     
@@ -98,7 +97,6 @@ class Dataset(torch.utils.data.Dataset):
         target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_dimension))))[:self.args.max_number_of_agents,:]
 
         return state, action, target
-
 
 
 def initialize_model(args):
@@ -160,3 +158,37 @@ class Variable_Length_Sampler(Sampler):
         return self.n_samples
 
 
+
+def evaluate(model, dataloader, criterion):
+        loss = 0
+        model.eval()
+        with torch.no_grad():
+                for observations, actions, target in  dataloader:
+                        predictions = model.forward(observations, actions)
+                        loss = criterion(predictions.flatten().float(), target.flatten().float())
+                        loss += loss.item()
+        model.train()
+        return loss
+
+
+def log(epoch, args, validation_loss=None, training_loss=None, test_loss = None):
+
+        if test_loss is not None:
+                f = open(f'{args.model_dir}/log/log.txt', 'a')
+                f.write(f'Test loss: {test_loss}')
+                print(f'Test loss: {test_loss}')
+                f.close()
+        elif validation_loss is not None and training_loss is not None:
+                # Save to log and print to output
+                f = open(f'{args.model_dir}/log/log.txt', 'a')
+                f.write(f'iteration {epoch}s Training loss: {training_loss}, validation loss: {validation_loss}\n')
+                print(f'iteration {epoch}s Training loss: {training_loss}, validation loss: {validation_loss}\n')
+                f.close()
+
+
+def save_model(model, args, epoch):
+        f = open(f'{args.model_dir}/log/log.txt', 'a')
+        f.write(f"Saving model on iteration {epoch}\n")
+        print(f"Saving model on iteration {epoch}\n")
+        torch.save(model, f"{args.model_dir}/model.pth")
+        f.close()

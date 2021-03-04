@@ -1,42 +1,8 @@
 import torch
 import numpy as np
 from tqdm import tqdm
-from utils import initialize_dataloader, initialize_model, init_args
+from utils import initialize_dataloader, initialize_model, init_args, evaluate, save_model, log
 
-
-def evaluate(model, dataloader, criterion):
-        loss = 0
-        model.eval()
-        with torch.no_grad():
-                for observations, actions, target in  dataloader:
-                        predictions = model.forward(observations, actions)
-                        loss = criterion(predictions.flatten().float(), target.flatten().float())
-                        loss += loss.item()
-        model.train()
-        return loss
-
-
-def log(epoch, args, validation_loss=None, training_loss=None, test_loss = None):
-
-        if test_loss is not None:
-                f = open(f'{args.model_dir}/log/log.txt', 'a')
-                f.write(f'Test loss: {test_loss}')
-                print(f'Test loss: {test_loss}')
-                f.close()
-        elif validation_loss is not None and training_loss is not None:
-                # Save to log and print to output
-                f = open(f'{args.model_dir}/log/log.txt', 'a')
-                f.write(f'iteration {epoch}s Training loss: {training_loss}, validation loss: {validation_loss}\n')
-                print(f'iteration {epoch}s Training loss: {training_loss}, validation loss: {validation_loss}\n')
-                f.close()
-
-
-def save_model(model, args, epoch):
-        f = open(f'{args.model_dir}/log/log.txt', 'a')
-        f.write(f"Saving model on iteration {epoch}\n")
-        print(f"Saving model on iteration {epoch}\n")
-        torch.save(model, f"{args.model_dir}/model.pth")
-        f.close()
 
 
 def main():
