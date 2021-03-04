@@ -9,6 +9,7 @@ from torch.utils.data.sampler import Sampler
 
 def init_args():
     parser = argparse.ArgumentParser(description=None)
+    parser.add_argument('-s ', '--save_dir', default='models', help='Path to save the results.')
     parser.add_argument('-m ', '--model', default='model_c', help='Path of the model.')
     parser.add_argument('-l ', '--log_directory', default='./log', help='Path of the log file.')
     parser.add_argument('-a ', '--max_number_of_agents', default=6, type=int, help='Maximum number of agents')
@@ -24,7 +25,7 @@ def init_args():
     args = parser.parse_args()   
     assert args.model in ['model_a', 'model_b', 'model_c', 'Feedforward'], "Not a valid model"
 
-    args.model_dir = f'./models/{args.model}'
+    args.model_dir = f'./{args.save_dir}/{args.model}'
     if not os.path.exists(args.model_dir):
         os.mkdir(args.model_dir)
         os.mkdir(f'{args.model_dir}/log')
@@ -64,7 +65,6 @@ def initialize_dataloader(args, pad_targets=True, subset = None):
     # Prepare into a torch dataset
     training_dataset = Dataset(state_features, action_features, targets, action_to_id, args) 
     training_dataloader = DataLoader(training_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True) 
-
     
     validation_dataset = Dataset(val_state_features, val_action_features, val_targets, action_to_id, args) 
     validation_dataloader = DataLoader(validation_dataset, batch_size=args.batch_size, shuffle=True, drop_last = True) 
