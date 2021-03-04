@@ -16,12 +16,19 @@ def evaluate(model, dataloader, criterion):
         return loss
 
 
-def log(validation_loss, epoch, training_loss, args):
-        # Save to log and print to output
-        f = open(f'{args.model_dir}/log/log.txt', 'a')
-        f.write(f'iteration {epoch}s Training loss: {training_loss}, validation loss: {validation_loss}\n')
-        print(f'iteration {epoch}s Training loss: {training_loss}, validation loss: {validation_loss}\n')
-        f.close()
+def log(epoch, args, validation_loss=None, training_loss=None, test_loss = None):
+
+        if test_loss is not None:
+                f = open(f'{args.model_dir}/log/log.txt', 'a')
+                f.write(f'Test loss: {test_loss}')
+                print(f'Test loss: {test_loss}')
+                f.close()
+        elif validation_loss is not None and training_loss is not None:
+                # Save to log and print to output
+                f = open(f'{args.model_dir}/log/log.txt', 'a')
+                f.write(f'iteration {epoch}s Training loss: {training_loss}, validation loss: {validation_loss}\n')
+                print(f'iteration {epoch}s Training loss: {training_loss}, validation loss: {validation_loss}\n')
+                f.close()
 
 
 def save_model(model, args, epoch):
@@ -35,11 +42,6 @@ def save_model(model, args, epoch):
 def main():
 
         args = init_args()
-
-        # Open log file
-        f = open(f'{args.model_dir}/log/log.txt', 'a')
-        f.write("Starting training.\n")
-        f.close()
 
         # Prepare the dataloader
         training_dataloader, validation_dataloader, test_dataloader, args = initialize_dataloader(args, subset=None)
@@ -86,7 +88,7 @@ def main():
                 np.save(f'{args.model_dir}/log/validation_losses.npy', validation_losses)
 
                 # Update the logs
-                log(validation_loss, epoch, training_loss, args)
+                log(epoch, args, validation_loss = validation_loss, training_loss=training_loss)
 
                 # Save model
                 if validation_loss < best_validation_loss:
@@ -95,7 +97,7 @@ def main():
 
         # Apply to test dataset
         test_loss = evaluate(model, test_dataloader, criterion)
-        print(f'Test loss: {test_loss}')
+        log(-1, args, test_loss = test_loss)
 
 
 if __name__ == "__main__":
