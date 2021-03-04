@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+from torch.nn.functional import softmax
 
 
 class model_a(nn.Module):
@@ -150,28 +151,37 @@ class Feedforward(nn.Module):
         return x
 
 
-
-# class multiheaded_attention_sa(nn.Module):
+class test(nn.Module):
     
-#     def __init__(self,args):
-#         super(multiheaded_attention_sa, self).__init__()
-#         self.args = args
+    def __init__(self,args):
+        super(test, self).__init__()
+        self.args = args
         
-#         self.observation_embedding = nn.Linear(1 , args.embedding_dimension)
-#         self.action_embedding = nn.Linear(1, args.embedding_dimension)
+        self.observation_embedding = nn.Linear(1 , args.embedding_dimension)
+        self.action_embedding = nn.Linear(1, args.embedding_dimension)
 
-#         self.attention = nn.Linear(args.embedding_dimension, 12)
-#         self.predict = nn.Linear(args.embedding_dimension, 1)
+        self.query = nn.Linear(42, args.output_dimension)
+        self.key = nn.Linear(args.embedding_dimension, args.embedding_dimension)
+        self.value = nn.Linear(args.embedding_dimension, args.embedding_dimension)
+
+        self.attention = nn.Linear(args.embedding_dimension, args.output_dimension)
+        self.predict = nn.Linear(args.embedding_dimension, 1)
 
 
-#     def forward(self, observation, action):
-#         observation_encoding = self.observation_embedding(observation.reshape(self.args.batch_size,-1,1).float())
-#         action_encoding = self.action_embedding(action.reshape(self.args.batch_size,-1,1).float())
+    def forward(self, observation, action):
+        batch_size = observation.shape[0]
+        observation_encoding = self.observation_embedding(observation.reshape(batch_size,-1,1).float())
+        action_encoding = self.action_embedding(action.reshape(batch_size,-1,1).float())
         
-#         x = torch.cat((observation_encoding, action_encoding),dim=1)
-#         weights = nn.functional.softmax(self.attention(x),dim=1)
-#         x = torch.bmm(weights, x)
+        x = torch.cat((observation_encoding, action_encoding),dim=1)
 
-#         x = self.predict(x)
+        query = self.query(x.permute(0,2,1)).permute(0,2,1)
+        key = self.key(x).permute(0,2,1)
+        value = self.value(x)
+
+        weights = softmax(torch.bmm(query,key),dim=2)
         
-#         return x
+        x = torch.bmm(weights, value)
+        x = self.predict(x)
+        
+        return x

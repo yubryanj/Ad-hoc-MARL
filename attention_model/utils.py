@@ -3,17 +3,17 @@ import numpy as np
 import torch
 import os
 from torch.utils.data import DataLoader
-from model import Feedforward, model_a, model_b, model_c
+from model import Feedforward, model_a, model_b, model_c, test
 from torch.optim import Adam
 from torch.utils.data.sampler import Sampler
 
 def init_args():
     parser = argparse.ArgumentParser(description=None)
     parser.add_argument('-s ', '--save_dir', default='models', help='Path to save the results.')
-    parser.add_argument('-m ', '--model', default='model_c', help='Path of the model.')
+    parser.add_argument('-m ', '--model', default='test', help='Path of the model.')
     parser.add_argument('-l ', '--log_directory', default='./log', help='Path of the log file.')
     parser.add_argument('-a ', '--max_number_of_agents', default=6, type=int, help='Maximum number of agents')
-    parser.add_argument('-b ', '--batch_size', default=1000, type=int, help='Batch size')
+    parser.add_argument('-b ', '--batch_size', default=512, type=int, help='Batch size')
     parser.add_argument('-hd ', '--hidden_dimension', default=32, type=int, help='Hidden dimension size')
     parser.add_argument('-e ', '--embedding_dimension', default=32, type=int, help='Embedding dimension size')
     parser.add_argument('-t ', '--training_dataset', default='./data/training_v1.npy', help='Path to training dataset')
@@ -23,7 +23,7 @@ def init_args():
     parser.add_argument('-nh ', '--n_heads', default=1, type=int, help='Number of attention heads')
 
     args = parser.parse_args()   
-    assert args.model in ['model_a', 'model_b', 'model_c', 'Feedforward'], "Not a valid model"
+    assert args.model in ['test', 'model_a', 'model_b', 'model_c', 'Feedforward'], "Not a valid model"
 
     args.model_dir = f'./{args.save_dir}/{args.model}'
     if not os.path.exists(args.model_dir):
@@ -115,6 +115,8 @@ def initialize_model(args):
         model = model_b(args)
     elif args.model =='model_c':
         model = model_c(args)
+    elif args.model == 'test':
+        model = test(args)
     else:
         model = None
         assert(False, "Invalid Entry")
