@@ -3,17 +3,33 @@ import numpy as np
 from tqdm import tqdm
 from utils import initialize_dataloader, initialize_model, init_args
 
-def validate(model, validation_dataloader, criterion):
-        validation_loss = 0
+
+def evaluate(model, dataloader, criterion):
+        loss = 0
         model.eval()
         with torch.no_grad():
-                for observations, actions, target in  validation_dataloader:
+                for observations, actions, target in  dataloader:
                         predictions = model.forward(observations, actions)
                         loss = criterion(predictions.flatten().float(), target.flatten().float())
-                        validation_loss += loss.item()
+                        loss += loss.item()
         model.train()
-        return validation_loss
+        return loss
 
+
+def log(validation_loss, epoch, training_loss, args):
+        # Save to log and print to output
+        f = open(f'{args.model_dir}/log/log.txt', 'a')
+        f.write(f'iteration {epoch}s Training loss: {training_loss}, validation loss: {validation_loss}\n')
+        print(f'iteration {epoch}s Training loss: {training_loss}, validation loss: {validation_loss}\n')
+        f.close()
+
+
+def save_model(model, args, epoch):
+        f = open(f'{args.model_dir}/log/log.txt', 'a')
+        f.write(f"Saving model on iteration {epoch}\n")
+        print(f"Saving model on iteration {epoch}\n")
+        torch.save(model, f"{args.model_dir}/model.pth")
+        f.close()
 
 
 def main():
@@ -21,7 +37,7 @@ def main():
         args = init_args()
 
         # Open log file
-        f = open(f'{args.log_directory}/{args.model}_log.txt', 'w')
+        f = open(f'{args.model_dir}/log/log.txt', 'a')
         f.write("Starting training.\n")
         f.close()
 
@@ -31,7 +47,7 @@ def main():
         # Prepare the model
         model, criterion, optimizer = initialize_model(args)
 
-        best_validation_loss = validate(model,validation_dataloader, criterion)
+        best_validation_loss = evaluate(model,validation_dataloader, criterion)
         training_losses = []
         validation_losses = []
         model.train()
@@ -61,29 +77,26 @@ def main():
                         training_loss += loss.item()
 
                 # Check against the validation dataset
-                validation_loss = validate(model,validation_dataloader, criterion)
-
-                if validation_loss < best_validation_loss:
-                        f = open(f'{args.log_directory}/{args.model}_log.txt', "a")
-                        f.write(f"Saving model on iteration {epoch}\n")
-                        print(f"Saving model on iteration {epoch}\n")
-                        torch.save(model, f"./models/{args.model}.pth")
-                        f.close()
-                        best_validation_loss = validation_loss
-
-                # Save to log and print to output
-                f = open(f'{args.log_directory}/{args.model}_log.txt', "a")
-                f.write(f'iteration {epoch}s total loss: {training_loss}, validation loss: {validation_loss}\n')
-                print(f'iteration {epoch}s total loss: {training_loss}, validation loss: {validation_loss}\n')
-                f.close()
+                validation_loss = evaluate(model,validation_dataloader, criterion)
 
                 # Save the losses
                 training_losses.append(training_loss)
                 validation_losses.append(validation_loss)
-                np.save(f'{args.log_directory}/{args.model}_training_losses.npy', training_losses)
-                np.save(f'{args.log_directory}/{args.model}_validation_losses.npy', validation_losses)
+                np.save(f'{args.model_dir}/log/training_losses.npy', training_losses)
+                np.save(f'{args.model_dir}/log/validation_losses.npy', validation_losses)
 
-        print(f'Validation error: {best_validation_loss}')
+                # Update the logs
+                log(validation_loss, epoch, training_loss, args)
+
+                # Save model
+                if validation_loss < best_validation_loss:
+                        save_model(model, args, epoch)
+                        best_validation_loss = validation_loss
+
+        # Apply to test dataset
+        test_loss = evaluate(model, test_dataloader, criterion)
+        print(f'Test loss: {test_loss}')
+
 
 if __name__ == "__main__":
     main()

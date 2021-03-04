@@ -3,16 +3,16 @@ import numpy as np
 import torch
 import os
 from torch.utils.data import DataLoader
-from model import Feedforward, multiheaded_attention_sa, model_a, model_b
+from model import Feedforward, model_a, model_b, model_c
 from torch.optim import Adam
 from torch.utils.data.sampler import Sampler
 
 def init_args():
     parser = argparse.ArgumentParser(description=None)
-    parser.add_argument('-m ', '--model', default='model_b', help='Path of the model.')
+    parser.add_argument('-m ', '--model', default='model_c', help='Path of the model.')
     parser.add_argument('-l ', '--log_directory', default='./log', help='Path of the log file.')
     parser.add_argument('-a ', '--max_number_of_agents', default=6, type=int, help='Maximum number of agents')
-    parser.add_argument('-b ', '--batch_size', default=512, type=int, help='Batch size')
+    parser.add_argument('-b ', '--batch_size', default=1000, type=int, help='Batch size')
     parser.add_argument('-hd ', '--hidden_dimension', default=32, type=int, help='Hidden dimension size')
     parser.add_argument('-e ', '--embedding_dimension', default=32, type=int, help='Embedding dimension size')
     parser.add_argument('-t ', '--training_dataset', default='./data/training_v1.npy', help='Path to training dataset')
@@ -22,8 +22,14 @@ def init_args():
     parser.add_argument('-nh ', '--n_heads', default=1, type=int, help='Number of attention heads')
 
     args = parser.parse_args()   
-    assert args.model in ['model_a', 'model_b', 'mha_sa', 'Feedforward'], "Not a valid model"
+    assert args.model in ['model_a', 'model_b', 'model_c', 'Feedforward'], "Not a valid model"
+
+    args.model_dir = f'./models/{args.model}'
+    if not os.path.exists(args.model_dir):
+        os.mkdir(args.model_dir)
+        os.mkdir(f'{args.model_dir}/log')
    
+
     return args
 
 
@@ -56,11 +62,11 @@ def initialize_dataloader(args, pad_targets=True, subset = None):
     args.output_dimension = args.max_number_of_agents * args.observation_dimension
 
     # Prepare into a torch dataset
-    training_dataset = Training_Dataset(state_features, action_features, targets, action_to_id, args) 
+    training_dataset = Dataset(state_features, action_features, targets, action_to_id, args) 
     training_dataloader = DataLoader(training_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True) 
 
     
-    validation_dataset = Training_Dataset(val_state_features, val_action_features, val_targets, action_to_id, args) 
+    validation_dataset = Dataset(val_state_features, val_action_features, val_targets, action_to_id, args) 
     validation_dataloader = DataLoader(validation_dataset, batch_size=args.batch_size, shuffle=True, drop_last = True) 
 
     test_dataset = Dataset(test_state_features, test_action_features, test_targets, action_to_id, args) 
@@ -68,7 +74,7 @@ def initialize_dataloader(args, pad_targets=True, subset = None):
 
     return training_dataloader, validation_dataloader, test_dataloader, args
 
-class Training_Dataset(torch.utils.data.Dataset):
+class Dataset(torch.utils.data.Dataset):
     
     'Characterizes a dataset for PyTorch'
     def __init__(self, states, actions, targets, action_to_id, args):
@@ -94,52 +100,23 @@ class Training_Dataset(torch.utils.data.Dataset):
         return state, action, target
 
 
-class Dataset(torch.utils.data.Dataset):
-
-    'Characterizes a dataset for PyTorch'
-    def __init__(self, states, actions, targets, action_to_id, args):
-        'Initialization'
-        self.states = states
-        self.actions= actions
-        self.targets = targets
-        self.action_to_id = action_to_id
-        self.args = args
-
-    def __len__(self):
-        'Denotes the total number of samples'
-        return len(self.states)
-
-    def __getitem__(self, index):
-        'Generates one sample of data'
-        # Select sample
-
-        if self.args.model =='Feedforward':
-            state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_dimension))))[:self.args.max_number_of_agents,:]
-            action = np.vstack((self.actions[index],np.zeros((self.args.max_number_of_agents,5))))[:self.args.max_number_of_agents,:]
-            target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_dimension))))[:self.args.max_number_of_agents,:]
-        else:
-            state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_dimension))))[:self.args.max_number_of_agents,:]
-            action = np.vstack((self.actions[index],np.zeros((self.args.max_number_of_agents,5))))[:self.args.max_number_of_agents,:]
-            target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_dimension))))[:self.args.max_number_of_agents,:]
-
-        return state, action, target
-
 
 def initialize_model(args):
-    if os.path.exists(f"./models/{args.model}.pth"):
-        f = open(f'{args.log_directory}/{args.model}_log.txt', 'w')
+    model_path = f'{args.model_dir}/model.pth'
+    if os.path.exists(model_path):
+        f = open(f'{args.model_dir}/log/log.txt', 'w')
         f.write("Loading Model.\n")
         f.close()
-        print(f"Loading model from './models/{args.model}.pth")
-        model = torch.load(f"./models/{args.model}.pth")
+        print(f"Loading model from {model_path}")
+        model = torch.load(f'{model_path}')
     elif args.model == 'Feedforward':
         model = Feedforward(args)
     elif args.model == 'model_a':
         model = model_a(args)
     elif args.model == 'model_b':
         model = model_b(args)
-    elif args.model =='mha_sa':
-        model = multiheaded_attention_sa(args)
+    elif args.model =='model_c':
+        model = model_c(args)
     else:
         model = None
         assert(False, "Invalid Entry")
