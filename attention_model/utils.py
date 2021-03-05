@@ -10,10 +10,10 @@ from torch.utils.data.sampler import Sampler
 def init_args():
     parser = argparse.ArgumentParser(description=None)
     parser.add_argument('-s ', '--save_dir', default='models', help='Path to save the results.')
-    parser.add_argument('-m ', '--model', default='test', help='Path of the model.')
+    parser.add_argument('-m ', '--model', default='model_a', help='Path of the model.')
     parser.add_argument('-l ', '--log_directory', default='./log', help='Path of the log file.')
     parser.add_argument('-a ', '--max_number_of_agents', default=6, type=int, help='Maximum number of agents')
-    parser.add_argument('-b ', '--batch_size', default=512, type=int, help='Batch size')
+    parser.add_argument('-b ', '--batch_size', default=1, type=int, help='Batch size')
     parser.add_argument('-hd ', '--hidden_dimension', default=32, type=int, help='Hidden dimension size')
     parser.add_argument('-e ', '--embedding_dimension', default=32, type=int, help='Embedding dimension size')
     parser.add_argument('-t ', '--training_dataset', default='./data/training_v1.npy', help='Path to training dataset')
@@ -92,9 +92,16 @@ class Dataset(torch.utils.data.Dataset):
         'Generates one sample of data'
         # Select sample
 
-        state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_dimension))))[:self.args.max_number_of_agents,:]
-        action = np.vstack((self.actions[index],np.zeros((self.args.max_number_of_agents, self.args.action_dimension))))[:self.args.max_number_of_agents,:]
-        target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_dimension))))[:self.args.max_number_of_agents,:]
+        if self.args.model == 'model_a':
+            state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_dimension))))[:self.args.max_number_of_agents,:]
+            action = np.vstack((self.actions[index],np.zeros((self.args.max_number_of_agents, self.args.action_dimension))))[:self.args.max_number_of_agents,:]
+            target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_dimension))))[:self.args.max_number_of_agents,:]
+        elif self.args.model == 'model_b':
+            state = self.states[index]
+            action = self.actions[index]
+            target = self.targets[index]
+        else:
+            state, action, target = None, None, None
 
         return state, action, target
 

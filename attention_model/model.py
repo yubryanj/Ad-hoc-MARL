@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 from torch.nn.functional import softmax
+import math
 
 
 class model_a(nn.Module):
@@ -10,17 +11,23 @@ class model_a(nn.Module):
         super(model_a, self).__init__()
         self.args = args
         
+        # Encode state and action
         self.state_embedding = nn.Linear(args.max_number_of_agents * args.observation_dimension , args.embedding_dimension)
         self.action_embedding = nn.Linear(args.action_dimension, args.embedding_dimension)
   
+        # Attention
         self.qkv_projection = nn.Linear(args.embedding_dimension * 2, 2 * (3 * args.embedding_dimension))        
-
         self.attention = nn.MultiheadAttention(args.embedding_dimension * 2, args.n_heads)
 
+        # Each attended encoding outputs the next observation pair (x',y').  Collectively, it is the next state.
         self.predict = nn.Linear(args.embedding_dimension * 2, 2)
 
 
     def forward(self, state, action):
+
+        # State, action encoding
+        # Uses attention to determine whether another agent's state/action pair is necessary to pay attention to
+
         batch_size = state.shape[0]
 
         # Prepare the state encodings
@@ -51,17 +58,22 @@ class model_b(nn.Module):
         super(model_b, self).__init__()
         self.args = args
         
+        # Encode the inputs
         self.observation_embedding = nn.Linear(args.observation_dimension , args.embedding_dimension)
         self.action_embedding = nn.Linear(args.action_dimension, args.embedding_dimension)
 
+        # Attention mechanism
         self.qkv_projection = nn.Linear(args.embedding_dimension * 2, 2 * (3 * args.embedding_dimension))        
-
         self.attention = nn.MultiheadAttention(args.embedding_dimension * 2, args.n_heads)
 
-        self.predict = nn.Linear(args.embedding_dimension * 2, 1)
+        # Each attended observation/action encoding outputs, (x',y') for each observation in view.
+        self.predict = nn.Linear(args.embedding_dimension * 2, 2)
 
 
     def forward(self, observation, action):
+
+        # Observation, action encoding
+        # Uses attention to determine whether another agent's observation/action pair is necessary to pay attention to
 
         # Prepare the state encodings
         observation_encoding = self.observation_embedding(observation.float())
@@ -158,12 +170,12 @@ class test(nn.Module):
         self.observation_embedding = nn.Linear(1 , args.embedding_dimension)
         self.action_embedding = nn.Linear(1, args.embedding_dimension)
 
-        self.query = nn.Linear(args.embedding_dimension, args.embedding_dimension)
+        self.query = nn.Linear(42, args.output_dimension)
         self.key = nn.Linear(args.embedding_dimension, args.embedding_dimension)
         self.value = nn.Linear(args.embedding_dimension, args.embedding_dimension)
 
         self.attention = nn.Linear(args.embedding_dimension, args.output_dimension)
-        self.predict = nn.Linear(args.embedding_dimension, 2)
+        self.predict = nn.Linear(args.embedding_dimension, 1)
 
 
     def forward(self, observation, action):
@@ -174,14 +186,14 @@ class test(nn.Module):
         x = torch.cat((observation_encoding, action_encoding),dim=1)
 
         query = self.query(x.permute(0,2,1)).permute(0,2,1)
-        key = self.key(x).permute(0,2,1)
+        key = self.key(x)
         value = self.value(x)
-        d_k = query.shape(0)
+        d_k = query.shape[1]
 
-        weights = softmax(torch.bmm(query,key),dim=2)/torch.sqrt(d_k)
-        
+        weights = softmax(torch.bmm(query,key.transpose(1,2)),dim=2) / math.sqrt(d_k)
+
         x = torch.bmm(weights, value)
+
         x = self.predict(x)
         
-        return      
-        [p ]
+        return x
