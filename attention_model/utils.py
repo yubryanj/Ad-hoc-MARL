@@ -10,7 +10,7 @@ from torch.utils.data.sampler import Sampler
 def init_args():
     parser = argparse.ArgumentParser(description=None)
     parser.add_argument('-s ', '--save_dir', default='models', help='Path to save the results.')
-    parser.add_argument('-m ', '--model', default='test', help='Path of the model.')
+    parser.add_argument('-m ', '--model', default='model_b', help='Path of the model.')
     parser.add_argument('-l ', '--log_directory', default='./log', help='Path of the log file.')
     parser.add_argument('-a ', '--max_number_of_agents', default=6, type=int, help='Maximum number of agents')
     parser.add_argument('-b ', '--batch_size', default=512, type=int, help='Batch size')

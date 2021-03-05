@@ -4,6 +4,7 @@ from torch.nn.functional import softmax
 
 
 class model_a(nn.Module):
+    # Maps state, action features to next state
     
     def __init__(self,args):
         super(model_a, self).__init__()
@@ -46,6 +47,7 @@ class model_a(nn.Module):
 
 
 class model_b(nn.Module):
+    # Maps observation action pairs to next observation
     
     def __init__(self,args):
         super(model_b, self).__init__()
@@ -53,9 +55,9 @@ class model_b(nn.Module):
         
         self.observation_embedding = nn.Linear(args.observation_dimension , args.embedding_dimension)
         self.action_embedding = nn.Linear(args.action_dimension, args.embedding_dimension)
-
-        self.q_projections = nn.Linear(args.max_number_of_agents, args.output_dimension)       
-        self.kv_projection = nn.Linear(args.embedding_dimension * 2, 2 * (args.embedding_dimension+ args.embedding_dimension))        
+   
+        self.q_projections = nn.Linear(args.embedding_dimension * 2, 2 * (args.embedding_dimension + args.embedding_dimension))       
+        self.kv_projection = nn.Linear(args.embedding_dimension * 2, 2 * (args.embedding_dimension + args.embedding_dimension))        
 
         self.attention = nn.MultiheadAttention(args.embedding_dimension * 2, args.n_heads)
 
@@ -63,6 +65,7 @@ class model_b(nn.Module):
 
 
     def forward(self, observation, action):
+        batch_size = observation.shape[0]
 
         # Prepare the state encodings
         observation_encoding = self.observation_embedding(observation.float())
@@ -74,7 +77,7 @@ class model_b(nn.Module):
         x = torch.cat((observation_encoding, action_encoding),dim=2)
 
         # Attention
-        query = self.q_projections(x.permute(0,2,1)).permute(2,0,1)
+        query = self.q_projections(x).reshape(batch_size, -1, 2 * self.args.embedding_dimension).permute(1,0,2)
         key, value = self.kv_projection(x).permute(1,0,2).chunk(2,dim=2)
         x = self.attention(query, key, value)[0].permute(1,0,2)
 
@@ -178,10 +181,12 @@ class test(nn.Module):
         query = self.query(x.permute(0,2,1)).permute(0,2,1)
         key = self.key(x).permute(0,2,1)
         value = self.value(x)
+        d_k = query.shape(0)
 
-        weights = softmax(torch.bmm(query,key),dim=2)
+        weights = softmax(torch.bmm(query,key),dim=2)/torch.sqrt(d_k)
         
         x = torch.bmm(weights, value)
         x = self.predict(x)
         
-        return x
+        return      
+        [p ]
