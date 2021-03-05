@@ -5,7 +5,10 @@ import math
 
 
 class model_a(nn.Module):
-    # Maps state, action features to next state
+    """ 
+    # Maps <state, action> features to next state
+    # Uses attention to determine whether another agent's state/action pair is necessary to pay attention to
+    """
     
     def __init__(self,args):
         super(model_a, self).__init__()
@@ -24,9 +27,13 @@ class model_a(nn.Module):
 
 
     def forward(self, state, action):
+        """
+        Conducts a forward pass
+        :arg    state           [batch size, number of agents in the state, observation dimension]       
+        :arg    action          [batch size, number of agents in the state, action dimension]         
+        :output prediction      [batch size, number of agents in the state, observation dimension]                     
+        """
 
-        # State, action encoding
-        # Uses attention to determine whether another agent's state/action pair is necessary to pay attention to
 
         batch_size = state.shape[0]
 
@@ -52,8 +59,11 @@ class model_a(nn.Module):
 
 
 class model_b(nn.Module):
-    # Maps observation action pairs to next observation
-    
+    """ 
+    # Maps <observation, action> pairs to predict the next observation
+    # Uses attention to determine whether another agent's observation/action pair is necessary to pay attention to
+    """
+
     def __init__(self,args):
         super(model_b, self).__init__()
         self.args = args
@@ -71,12 +81,17 @@ class model_b(nn.Module):
 
 
     def forward(self, observation, action):
-
+        """
+        Conducts a forward pass
+        :arg    observation     [batch size, number of agents observed, observation dimension]       
+        :arg    action          [batch size, number of agents observed, action dimension]         
+        :output prediction      [batch size, number of agents observed, observation dimension]                     
+        """
         # Observation, action encoding
         # Uses attention to determine whether another agent's observation/action pair is necessary to pay attention to
 
         # Prepare the state encodings
-        observation_encoding = self.observation_embedding(observation.float())
+        observation_encoding = self.observation_embedding(observation.float())      
 
         # Prepare the action encodings
         action_encoding = self.action_embedding(action.float())
@@ -95,8 +110,12 @@ class model_b(nn.Module):
 
 
 class model_c(nn.Module):
+    """ 
+    # Maps <observation features, action> pairs to next observation
+    # Uses attention to determine whether another <observation feature/action> pair is necessary to pay attention to
+    """
     
-    def __init__(self,args):
+    def __init__(self, args):
         super(model_c, self).__init__()
         self.args = args
         
@@ -110,6 +129,12 @@ class model_c(nn.Module):
 
 
     def forward(self, observation, action):
+        """
+        Conducts a forward pass
+        :arg    observation     [batch size, number of agents, observation dimension]       
+        :arg    action          [batch size, number of agents]         
+        :output prediction      [batch size, number of agents * observation_dimension, 1]                     
+        """
         batch_size = observation.shape[0]
 
         # Encode the inputs
