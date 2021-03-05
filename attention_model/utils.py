@@ -10,7 +10,7 @@ from torch.utils.data.sampler import Sampler
 def init_args():
     parser = argparse.ArgumentParser(description=None)
     parser.add_argument('-s ', '--save_dir', default='models', help='Path to save the results.')
-    parser.add_argument('-m ', '--model', default='model_a', help='Path of the model.')
+    parser.add_argument('-m ', '--model', default='model_c', help='Path of the model.')
     parser.add_argument('-l ', '--log_directory', default='./log', help='Path of the log file.')
     parser.add_argument('-a ', '--max_number_of_agents', default=6, type=int, help='Maximum number of agents')
     parser.add_argument('-b ', '--batch_size', default=1, type=int, help='Batch size')
@@ -99,6 +99,10 @@ class Dataset(torch.utils.data.Dataset):
         elif self.args.model == 'model_b':
             state = self.states[index]
             action = self.actions[index]
+            target = self.targets[index]
+        elif self.args.model == 'model_c':
+            state = self.states[index]
+            action = torch.tensor([self.action_to_id[tuple(i)] for i in self.actions[index]])
             target = self.targets[index]
         else:
             state, action, target = None, None, None

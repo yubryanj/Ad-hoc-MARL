@@ -101,41 +101,30 @@ class model_c(nn.Module):
         self.args = args
         
         self.observation_embedding = nn.Linear(1 , args.embedding_dimension)
-        self.action_embedding = nn.Linear(1, args.embedding_dimension)
+        self.action_embedding = nn.Embedding(args.number_of_actions, args.embedding_dimension)
 
-        q_projections = {
-            '42': nn.Linear(42, args.output_dimension),
-            '35': nn.Linear(35, args.output_dimension),
-            '28': nn.Linear(28, args.output_dimension),
-            '21': nn.Linear(21, args.output_dimension),
-            '14': nn.Linear(14, args.output_dimension),
-            '7': nn.Linear(7, args.output_dimension),
-        }
-        self.q_projections = nn.ModuleDict(q_projections)
-        self.kv_projection = nn.Linear(args.embedding_dimension, 2 * args.embedding_dimension)        
-
+        self.qkv_projection = nn.Linear(args.embedding_dimension * 2, 3 * args.embedding_dimension)
         self.attention = nn.MultiheadAttention(args.embedding_dimension, args.n_heads)
 
-        self.predict = nn.Linear(args.embedding_dimension, 2)
+        self.predict = nn.Linear(args.embedding_dimension, 1)
 
 
     def forward(self, observation, action):
-        n_agents = action.shape[1]
         batch_size = observation.shape[0]
+
+        # Encode the inputs
         observation_encoding = self.observation_embedding(observation.reshape(batch_size,-1,1).float())
-        action_encoding = self.action_embedding(action.reshape(batch_size,-1,1).float())
+        action_encoding = torch.cat(2*[self.action_embedding(action).float()],dim=1)
         
-        x = torch.cat((observation_encoding, action_encoding),dim=1)
-        sequence_length = x.shape[1]
+        x = torch.cat((observation_encoding, action_encoding),dim=2)
 
         # Attention
-        query = self.q_projections[str(sequence_length)](x.permute(0,2,1)).permute(2,0,1)
-        key, value = self.kv_projection(x).permute(1,0,2).chunk(2,dim=2)
+        query, key, value = self.qkv_projection(x).permute(1,0,2).chunk(3,dim=2)
         x = self.attention(query, key, value)[0].permute(1,0,2)
 
         x = self.predict(x)
         
-        return x[:,:n_agents*2,:]
+        return x
 
 
 class Feedforward(nn.Module):
