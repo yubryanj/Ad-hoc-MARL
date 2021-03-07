@@ -120,7 +120,7 @@ class model_c(nn.Module):
         self.args = args
         
         self.observation_embedding = nn.Linear(1 , args.embedding_dimension)
-        self.action_embedding = nn.Embedding(args.number_of_actions, args.embedding_dimension)
+        self.action_embedding = nn.Linear(args.action_dimension, args.embedding_dimension)
 
         self.qkv_projection = nn.Linear(args.embedding_dimension * 2, 3 * args.embedding_dimension)
         self.attention = nn.MultiheadAttention(args.embedding_dimension, args.n_heads)
@@ -139,7 +139,7 @@ class model_c(nn.Module):
 
         # Encode the inputs
         observation_encoding = self.observation_embedding(observation.reshape(batch_size,-1,1).float())
-        action_encoding = torch.cat(2*[self.action_embedding(action).float()],dim=1)
+        action_encoding = torch.cat(2*[self.action_embedding(action.float())],dim=1)
         
         x = torch.cat((observation_encoding, action_encoding),dim=2)
 
@@ -158,7 +158,7 @@ class Feedforward(nn.Module):
         super(Feedforward, self).__init__()
 
         layers_dimension        = [args.hidden_dimension for _ in range(args.hidden_layers)]
-        layers_dimension[0]     = (args.observation_input_dimension + args.action_input_dimension) * args.max_number_of_agents
+        layers_dimension[0]     = (args.observation_dimension + args.action_dimension) * args.max_number_of_agents
         layers_dimension[-1]    = args.output_dimension
 
         self.layers = nn.ModuleList([nn.Linear(layers_dimension[i],layers_dimension[i+1]) \

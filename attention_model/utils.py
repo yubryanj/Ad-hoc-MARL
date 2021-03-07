@@ -10,12 +10,12 @@ from torch.utils.data.sampler import Sampler
 def init_args():
     parser = argparse.ArgumentParser(description=None)
     parser.add_argument('-s ', '--save_dir', default='models', help='Path to save the results.')
-    parser.add_argument('-m ', '--model', default='model_b', help='Path of the model.')
+    parser.add_argument('-m ', '--model', default='Feedforward', help='Path of the model.')
     parser.add_argument('-l ', '--log_directory', default='./log', help='Path of the log file.')
     parser.add_argument('-a ', '--max_number_of_agents', default=6, type=int, help='Maximum number of agents')
     parser.add_argument('-b ', '--batch_size', default=1, type=int, help='Batch size')
     parser.add_argument('-hd ', '--hidden_dimension', default=32, type=int, help='Hidden dimension size')
-    parser.add_argument('-e ', '--embedding_dimension', default=32, type=int, help='Embedding dimension size')
+    parser.add_argument('-e ', '--embedding_dimension', default=64, type=int, help='Embedding dimension size')
     parser.add_argument('-t ', '--training_dataset', default='./data/training_v1.npy', help='Path to training dataset')
     parser.add_argument('-te ', '--test_dataset', default='./data/test_v1.npy', help='Path to test dataset')
     parser.add_argument('-v ', '--validation_dataset', default='./data/validation_v1.npy', help='Path to validation dataset')
@@ -92,7 +92,7 @@ class Dataset(torch.utils.data.Dataset):
         'Generates one sample of data'
         # Select sample
 
-        if self.args.model == 'model_a':
+        if self.args.model in ['model_a','Feedforward']:
             state = np.vstack((self.states[index],np.zeros((self.args.max_number_of_agents, self.args.observation_dimension))))[:self.args.max_number_of_agents,:]
             action = np.vstack((self.actions[index],np.zeros((self.args.max_number_of_agents, self.args.action_dimension))))[:self.args.max_number_of_agents,:]
             target = np.vstack((self.targets[index],np.zeros((self.args.max_number_of_agents, self.args.observation_dimension))))[:self.args.max_number_of_agents,:]
@@ -102,7 +102,7 @@ class Dataset(torch.utils.data.Dataset):
             target = self.targets[index]
         elif self.args.model == 'model_c':
             state = self.states[index]
-            action = torch.tensor([self.action_to_id[tuple(i)] for i in self.actions[index]])
+            action = self.actions[index]
             target = self.targets[index]
         else:
             state, action, target = None, None, None
@@ -132,7 +132,7 @@ def initialize_model(args):
         model = None
         assert(False, "Invalid Entry")
     
-    criterion = torch.nn.MSELoss()
+    criterion = torch.nn.L1Loss()
     optimizer = Adam(model.parameters())
 
     return model, criterion, optimizer
@@ -171,17 +171,23 @@ class Variable_Length_Sampler(Sampler):
         return self.n_samples
 
 
-
 def evaluate(model, dataloader, criterion):
-        loss = 0
+        total_loss = 0
         model.eval()
+        n_batches = 0.0
         with torch.no_grad():
-                for observations, actions, target in  dataloader:
-                        predictions = model.forward(observations, actions)
-                        loss = criterion(predictions.flatten().float(), target.flatten().float())
-                        loss += loss.item()
+                for observations, actions, target in dataloader:
+                        prediction = model.forward(observations, actions)
+
+                        prediction = torch.Tensor(prediction.flatten())
+                        target = torch.Tensor(target.flatten().float())
+                        loss = criterion(prediction, target)
+
+                        total_loss += loss.item()
+                        n_batches += 1.0
         model.train()
-        return loss
+        total_loss = total_loss/ n_batches
+        return total_loss
 
 
 def log(epoch, args, validation_loss=None, training_loss=None, test_loss = None):
@@ -191,7 +197,7 @@ def log(epoch, args, validation_loss=None, training_loss=None, test_loss = None)
                 f.write(f'Test loss: {test_loss}')
                 print(f'Test loss: {test_loss}')
                 f.close()
-        elif validation_loss is not None and training_loss is not None:
+        else:
                 # Save to log and print to output
                 f = open(f'{args.model_dir}/log/log.txt', 'a')
                 f.write(f'iteration {epoch}s Training loss: {training_loss}, validation loss: {validation_loss}\n')
