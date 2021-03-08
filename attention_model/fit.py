@@ -63,13 +63,12 @@ def main():
                 np.save(f'{args.model_dir}/log/validation_losses.npy', validation_losses)
 
                 # Update the logs
-                if epoch % 100 == 0 :
-                        log(epoch, args, validation_loss = validation_loss, training_loss=training_loss)
+                log(epoch, args, validation_loss = validation_loss, training_loss=training_loss)
 
-                        # Save model
-                        if validation_loss < best_validation_loss:
-                                save_model(model, args, epoch)
-                                best_validation_loss = validation_loss
+                # Save model
+                if validation_loss < best_validation_loss:
+                        save_model(model, args, epoch)
+                        best_validation_loss = validation_loss
 
         # Apply to test dataset
         test_loss = evaluate(model, test_dataloader, criterion)
