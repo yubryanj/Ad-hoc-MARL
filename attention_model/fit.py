@@ -9,12 +9,12 @@ def main():
         args = init_args()
 
         # Prepare the dataloader
-        training_dataloader, validation_dataloader, test_dataloader, args = initialize_dataloader(args, subset=100)
+        training_dataloader, validation_dataloader, test_dataloader, args = initialize_dataloader(args, subset=None)
         
         # Prepare the model
         model, criterion, optimizer = initialize_model(args)
 
-        best_validation_loss = evaluate(model,training_dataloader, criterion)
+        best_validation_loss = evaluate(model,validation_dataloader, criterion)
         log(-1, args, validation_loss = best_validation_loss)
 
         training_losses = []
@@ -51,7 +51,7 @@ def main():
                         n_batches += 1.0
 
                 # Check against the validation dataset
-                validation_loss = evaluate(model,training_dataloader, criterion)
+                validation_loss = evaluate(model,validation_dataloader, criterion)
 
                 # Scale by the batch size
                 training_loss = training_loss / n_batches
