@@ -30,7 +30,7 @@ def main():
                 n_batches = 0.0
 
                 # for observations, actions, target in tqdm(training_dataloader):
-                for observations, actions, target in training_dataloader:
+                for observations, actions, target in tqdm(training_dataloader):
 
                         # Zero out the gradient for this round of updates
                         optimizer.zero_grad()
