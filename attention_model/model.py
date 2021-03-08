@@ -6,8 +6,8 @@ import math
 
 class model_a(nn.Module):
     """ 
-    # Maps <state, action> features to next state
-    # Uses attention to determine whether another agent's state/action pair is necessary to pay attention to
+    #   from state, actions to next state.
+    #   this is invariant to the number of agents, i.e., the number of actions
     """
     
     def __init__(self,args):
@@ -15,42 +15,39 @@ class model_a(nn.Module):
         self.args = args
         
         # Encode state and action
-        self.state_embedding = nn.Linear(args.max_number_of_agents * args.observation_dimension , args.embedding_dimension)
-        self.action_embedding = nn.Linear(args.action_dimension, args.embedding_dimension)
+        self.state_embedding = nn.Linear(args.state_dimension , args.state_embedding_dimension)
+        self.action_embedding = nn.Linear(args.action_dimension, args.action_embedding_dimension)
   
         # Attention
-        self.qkv_projection = nn.Linear(args.embedding_dimension * 2, 2 * (3 * args.embedding_dimension))        
-        self.attention = nn.MultiheadAttention(args.embedding_dimension * 2, args.n_heads)
+        state_action_embedding_dim = args.state_embedding_dimension + args.action_embedding_dimension
+        self.q_projection = nn.Linear(state_action_embedding_dim, state_action_embedding_dim)        
+        self.v_projection = nn.Linear(state_action_embedding_dim, state_action_embedding_dim)        
+        self.k_projection = nn.Linear(state_action_embedding_dim, state_action_embedding_dim)        
+        self.attention = nn.MultiheadAttention(state_action_embedding_dim, args.n_heads)
 
-        # Each attended encoding outputs the next observation pair (x',y').  Collectively, it is the next state.
-        self.predict = nn.Linear(args.embedding_dimension * 2, 2)
+        self.predict = nn.Linear(state_action_embedding_dim, args.state_dimension)
 
 
     def forward(self, state, action):
         """
         Conducts a forward pass
-        :arg    state           [batch size, number of agents in the state, observation dimension]       
+        :arg    state           [batch size, 1, state dimension]       
         :arg    action          [batch size, number of agents in the state, action dimension]         
-        :output prediction      [batch size, number of agents in the state, observation dimension]                     
+        :output prediction      [batch size, 1, state dimension]                     
         """
 
-
-        batch_size = state.shape[0]
-
-        # Prepare the state encodings
-        state = state.reshape(batch_size, 1, -1)
-        state_encoding = self.state_embedding(state.float())
-        state_encoding = state_encoding.repeat(1,self.args.max_number_of_agents,1)      # Repeat the state for each agent
-
-        # Prepare the action encodings
-        action_encoding = self.action_embedding(action.float())
-
-        # Concatenate the state with each action
-        x = torch.cat((state_encoding, action_encoding),dim=2)
+        # Prepare the embeddings
+        state_embedding = self.state_embedding(state.float())
+        state_embedding = state_embedding.repeat(1, action.shape[1], 1)
+        action_embedding = self.action_embedding(action.float())
+        state_action_embedding = torch.cat((state_embedding, action_embedding),dim=2)
 
         # Attention
-        query, key, value = self.qkv_projection(x).permute(1,0,2).chunk(3,dim=2)
-        x = self.attention(query, key, value)[0].permute(1,0,2)
+        query = self.q_projection(state_action_embedding).permute(1,0,2)
+        key = self.k_projection(state_action_embedding).permute(1,0,2)
+        value = self.v_projection(state_action_embedding).permute(1,0,2)
+        
+        x = self.attention(query, key, value)[0].permute(1,0,2)[:,0,:]
 
         # Predict the next state
         x = self.predict(x)
@@ -69,15 +66,17 @@ class model_b(nn.Module):
         self.args = args
         
         # Encode the inputs
-        self.observation_embedding = nn.Linear(args.observation_dimension , args.embedding_dimension)
-        self.action_embedding = nn.Linear(args.action_dimension, args.embedding_dimension)
+        self.observation_embedding = nn.Linear(args.observation_dimension , args.observation_embedding_dimension)
+        self.action_embedding = nn.Linear(args.action_dimension, args.action_embedding_dimension)
 
-        # Attention mechanism
-        self.qkv_projection = nn.Linear(args.embedding_dimension * 2, 2 * (3 * args.embedding_dimension))        
-        self.attention = nn.MultiheadAttention(args.embedding_dimension * 2, args.n_heads)
+        # Multi-head attention
+        observation_action_embedding_dim = args.observation_embedding_dimension + args.action_embedding_dimension
+        self.q_projection = nn.Linear(observation_action_embedding_dim, observation_action_embedding_dim)        
+        self.v_projection = nn.Linear(observation_action_embedding_dim, observation_action_embedding_dim)        
+        self.k_projection = nn.Linear(observation_action_embedding_dim, observation_action_embedding_dim)        
+        self.attention = nn.MultiheadAttention(observation_action_embedding_dim, args.n_heads)
 
-        # Each attended observation/action encoding outputs, (x',y') for each observation in view.
-        self.predict = nn.Linear(args.embedding_dimension * 2, 2)
+        self.predict = nn.Linear(observation_action_embedding_dim, args.observation_dimension)
 
 
     def forward(self, observation, action):
@@ -87,23 +86,21 @@ class model_b(nn.Module):
         :arg    action          [batch size, number of agents observed, action dimension]         
         :output prediction      [batch size, number of agents observed, observation dimension]                     
         """
-        # Observation, action encoding
+        # Observation, action embedding
         # Uses attention to determine whether another agent's observation/action pair is necessary to pay attention to
 
-        # Prepare the state encodings
-        observation_encoding = self.observation_embedding(observation.float())      
-
-        # Prepare the action encodings
-        action_encoding = self.action_embedding(action.float())
-
-        # Concatenate the state with each action
-        x = torch.cat((observation_encoding, action_encoding),dim=2)
+        # Prepare the embeddings
+        observation_embedding = self.observation_embedding(observation.float())      
+        action_embedding = self.action_embedding(action.float())
+        observation_action_embedding = torch.cat((observation_embedding, action_embedding),dim=2)
 
         # Attention
-        query, key, value = self.qkv_projection(x).permute(1,0,2).chunk(3,dim=2)
+        query = self.q_projection(observation_action_embedding).permute(1,0,2)
+        key = self.k_projection(observation_action_embedding).permute(1,0,2)
+        value = self.v_projection(observation_action_embedding).permute(1,0,2)
+
         x = self.attention(query, key, value)[0].permute(1,0,2)
 
-        # Predict the next state
         x = self.predict(x)
         
         return x
@@ -119,33 +116,38 @@ class model_c(nn.Module):
         super(model_c, self).__init__()
         self.args = args
         
-        self.observation_embedding = nn.Linear(1 , args.embedding_dimension)
+        self.observation_embedding = nn.Linear(args.observation_dimension , args.embedding_dimension)
         self.action_embedding = nn.Linear(args.action_dimension, args.embedding_dimension)
 
-        self.qkv_projection = nn.Linear(args.embedding_dimension * 2, 3 * args.embedding_dimension)
-        self.attention = nn.MultiheadAttention(args.embedding_dimension, args.n_heads)
+        observation_action_embedding_dim = args.embedding_dimension
+        self.q_projection = nn.Linear(observation_action_embedding_dim, observation_action_embedding_dim)        
+        self.v_projection = nn.Linear(observation_action_embedding_dim, observation_action_embedding_dim)        
+        self.k_projection = nn.Linear(observation_action_embedding_dim, observation_action_embedding_dim)        
+        self.attention = nn.MultiheadAttention(observation_action_embedding_dim, args.n_heads)
 
-        self.predict = nn.Linear(args.embedding_dimension, 1)
+        self.predict = nn.Linear(observation_action_embedding_dim, args.observation_dimension)
 
 
     def forward(self, observation, action):
         """
         Conducts a forward pass
-        :arg    observation     [batch size, number of agents, observation dimension]       
-        :arg    action          [batch size, number of agents]         
-        :output prediction      [batch size, number of agents * observation_dimension, 1]                     
+        :arg    observation     [batch size, 1, observation dimension]              # Only the agent's position
+        :arg    action          [batch size, number of agents, action dimension]    # Action of other agents     
+        :output prediction      [batch size, 1, observation dimension]              # Agent's next position
         """
-        batch_size = observation.shape[0]
 
         # Encode the inputs
-        observation_encoding = self.observation_embedding(observation.reshape(batch_size,-1,1).float())
-        action_encoding = torch.cat(2*[self.action_embedding(action.float())],dim=1)
+        observation_embedding = self.observation_embedding(observation.float())
+        action_embedding = self.action_embedding(action.float())
         
-        x = torch.cat((observation_encoding, action_encoding),dim=2)
+        observation_action_embedding = torch.cat((observation_embedding, action_embedding),dim=1)
 
         # Attention
-        query, key, value = self.qkv_projection(x).permute(1,0,2).chunk(3,dim=2)
-        x = self.attention(query, key, value)[0].permute(1,0,2)
+        query = self.q_projection(observation_action_embedding).permute(1,0,2)
+        key = self.k_projection(observation_action_embedding).permute(1,0,2)
+        value = self.v_projection(observation_action_embedding).permute(1,0,2)
+
+        x = self.attention(query, key, value)[0].permute(1,0,2)[:,0,:]
 
         x = self.predict(x)
         
@@ -194,10 +196,10 @@ class test(nn.Module):
 
     def forward(self, observation, action):
         batch_size = observation.shape[0]
-        observation_encoding = self.observation_embedding(observation.reshape(batch_size,-1,1).float())
-        action_encoding = self.action_embedding(action.reshape(batch_size,-1,1).float())
+        observation_embedding = self.observation_embedding(observation.reshape(batch_size,-1,1).float())
+        action_embedding = self.action_embedding(action.reshape(batch_size,-1,1).float())
         
-        x = torch.cat((observation_encoding, action_encoding),dim=1)
+        x = torch.cat((observation_embedding, action_embedding),dim=1)
 
         query = self.query(x.permute(0,2,1)).permute(0,2,1)
         key = self.key(x)

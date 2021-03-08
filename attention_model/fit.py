@@ -9,12 +9,12 @@ def main():
         args = init_args()
 
         # Prepare the dataloader
-        training_dataloader, validation_dataloader, test_dataloader, args = initialize_dataloader(args, subset=None)
+        train_dataloaders, validation_dataloaders, test_dataloader, args = initialize_dataloader(args, subset=None)
         
         # Prepare the model
         model, criterion, optimizer = initialize_model(args)
 
-        best_validation_loss = evaluate(model,validation_dataloader, criterion)
+        best_validation_loss = evaluate(model,validation_dataloaders, criterion)
         log(-1, args, validation_loss = best_validation_loss)
 
         training_losses = []
@@ -23,14 +23,15 @@ def main():
         epoch = 0        
 
         # Iterate through the data
-        while best_validation_loss > 1e-2:
+        while best_validation_loss > args.threshold:
 
                 epoch += 1.0
                 training_loss = 0.0
                 n_batches = 0.0
 
-                # for observations, actions, target in tqdm(training_dataloader):
-                for observations, actions, target in tqdm(training_dataloader):
+                env = np.random.choice(args.training_agents)
+
+                for observations, actions, target in tqdm(train_dataloaders[env]):
 
                         # Zero out the gradient for this round of updates
                         optimizer.zero_grad()
@@ -51,7 +52,7 @@ def main():
                         n_batches += 1.0
 
                 # Check against the validation dataset
-                validation_loss = evaluate(model,validation_dataloader, criterion)
+                validation_loss = evaluate(model, validation_dataloaders, criterion)
 
                 # Scale by the batch size
                 training_loss = training_loss / n_batches
