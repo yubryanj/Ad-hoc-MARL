@@ -13,6 +13,8 @@ def parse_args():
     parser.add_argument("--action_embedding_dimension", default=64, type=int, help='Action Embedding dimension')
     parser.add_argument("--observation_embedding_dimension", default=64, type=int, help='Observation Embedding dimension')
     parser.add_argument("--state_embedding_dimension", default=64, type=int, help='State Embedding dimension')
+    parser.add_argument("--n-heads", default=1, type=int, help='Number of heads in the multi headed attention')
+    parser.add_argument("--epsilon", default=0.20, type=float, help='Epsilon Greedy Parameter')
 
     args = parser.parse_args()
 
@@ -30,10 +32,11 @@ def make_env():
     # create world
     world = scenario.make_world()
     # create multiagent environment
-    # Turned shared viewer to false to have one window showing all the agents - does not work for interactive agent
-    env = MultiAgentEnv(world, scenario.reset_world, scenario.reward, scenario.observation, info_callback=None, shared_viewer = False)
+    env = MultiAgentEnv(world, scenario.reset_world, scenario.reward, scenario.observation, info_callback=None, shared_viewer = True)
 
-    args.action_dimension = env.world.dim_c
-    args.observation_dimension = env.action_space[0].n
+    args.action_dimension = env.action_space[0].n
+    args.observation_dimension = env.observation_space[0].shape[0]
+    args.low_action = 0
+    args.high_action = 1
 
     return env, args
